@@ -1,30 +1,25 @@
-// importing the dependencies
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const PORT = 6080;
-const v1Router = require('./routers/api.v1')
+import "dotenv/config";
+import express from "express";
+import apiRouter from "./routers/api.v1.js";
+import { httpLogger, logger } from "./utils/logger.js";
 
-// defining the Express app
+const PORT = process.env.PORT || 3080;
+
 const app = express();
 
-// adding Helmet to enhance your API's security
-app.use(helmet());
+app.use(httpLogger);
+app.use(express.json());
 
-// using bodyParser to parse JSON bodies into JS objects
-app.use(bodyParser.json());
+app.use("/api/v1", apiRouter);
 
-// enabling CORS for all requests
-app.use(cors());
+app.get("/api", (req, res) => {
+  res.send("VPC API Endpoint is available, try /api/v1/tables.");
+});
 
-// adding morgan to log HTTP requests
-app.use(morgan('combined'));
+app.get("/", (req, res) => {
+  res.send("VPC Data Service is up and running...");
+});
 
-app.use('/api/v1', v1Router);
-
-// starting the server
 app.listen(PORT, () => {
-  console.log(`listening on port ${PORT}`);
+  logger.info(`listening on port ${PORT}`);
 });

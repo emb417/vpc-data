@@ -1,3 +1,8 @@
+# Ignore Mac system files
+.DS_Store
+
+# Ignore node_modules folder
 node_modules
-package-lock.json
+
+# Ignore dotenv file
 .env
