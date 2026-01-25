@@ -1,14 +1,7 @@
 import express from "express";
+import canvas from "../utils/canvas.js";
 import mongoHelper from "../utils/mongo.js";
-import { generateImage } from "../utils/canvas.js";
-import {
-  getScoresByTablePipeline,
-  getScoresByVpsIdPipeline,
-  getFuzzyTableSearchPipeline,
-  getTablesWithAuthorVersionPipeline,
-  getScoresByTableAndAuthorPipeline,
-  getScoresByTableAndAuthorAndVersionPipeline,
-} from "../utils/pipeline.js";
+import pipelineHelper from "../utils/pipeline.js";
 
 const router = express.Router();
 
@@ -29,7 +22,7 @@ router.post("/convert", async (req, res) => {
     textColor: "yellow",
     keepSpaces: true,
   };
-  const dataUri = await generateImage(textToConvert, imageOptions);
+  const dataUri = await canvas.generateImage(textToConvert, imageOptions);
   res.send(dataUri);
 });
 
@@ -39,14 +32,14 @@ router.get("/tables", async (req, res) => {
 });
 
 router.get("/tablesWithAuthorVersion", async (req, res) => {
-  const pipeline = getTablesWithAuthorVersionPipeline();
+  const pipeline = pipelineHelper.getTablesWithAuthorVersion();
   const tables = await mongoHelper.aggregate(pipeline, "tables");
   res.send(tables);
 });
 
 router.get("/scoresByTable", async (req, res) => {
   const tableName = req.query.tableName;
-  const pipeline = getScoresByTablePipeline(tableName);
+  const pipeline = pipelineHelper.getScoresByTable(tableName);
   const table = await mongoHelper.aggregate(pipeline, "tables");
   res.send(table);
 });
@@ -54,21 +47,24 @@ router.get("/scoresByTable", async (req, res) => {
 router.get("/scoresByTableAndAuthor", async (req, res) => {
   const tableName = req.query.tableName;
   const authorName = req.query.authorName;
-  const pipeline = getScoresByTableAndAuthorPipeline(tableName, authorName);
+  const pipeline = pipelineHelper.getScoresByTableAndAuthor(
+    tableName,
+    authorName,
+  );
   const table = await mongoHelper.aggregate(pipeline, "tables");
   res.send(table);
 });
 
 router.get("/scoresByVpsId", async (req, res) => {
   const vpsId = req.query.vpsId;
-  const pipeline = getScoresByVpsIdPipeline(vpsId);
+  const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
   const table = await mongoHelper.aggregate(pipeline, "tables");
   res.send(table);
 });
 
 router.get("/scoresByTableAndAuthorUsingFuzzyTableSearch", async (req, res) => {
   const tableSearchTerm = req.query.tableSearchTerm;
-  const pipeline = getFuzzyTableSearchPipeline(tableSearchTerm);
+  const pipeline = pipelineHelper.getFuzzyTableSearch(tableSearchTerm);
   const table = await mongoHelper.aggregate(pipeline, "tables");
   res.send(table);
 });
@@ -77,7 +73,7 @@ router.get("/scoresByTableAndAuthorAndVersion", async (req, res) => {
   const tableName = req.query.tableName;
   const authorName = req.query.authorName;
   const versionNumber = req.query.versionNumber;
-  const pipeline = getScoresByTableAndAuthorAndVersionPipeline(
+  const pipeline = pipelineHelper.getScoresByTableAndAuthorAndVersion(
     tableName,
     authorName,
     versionNumber,
@@ -127,6 +123,16 @@ router.get("/recentWeeks", async (req, res) => {
   const limit = parseInt(req.query.limit) || 13;
   const weeks = await mongoHelper.getRecentWeeks(channelName, limit);
   res.send(weeks);
+});
+
+router.get("/recentTablesByHighscores", async (req, res) => {
+  const tables = await mongoHelper.getRecentTables(
+    pipelineHelper.getRecentTablesByHighscores(
+      parseInt(req.query.limit),
+      parseInt(req.query.offset) ?? 0,
+    ),
+  );
+  res.send(tables);
 });
 
 export default router;

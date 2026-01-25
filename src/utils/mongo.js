@@ -90,6 +90,15 @@ const getRecentWeeks = async (channelName, limit) => {
   return docs;
 };
 
+const getRecentTables = async (pipeline) => {
+  const collection = await getCollection("tables");
+  const start = Date.now();
+  const docs = await collection.aggregate(pipeline).toArray();
+  const end = Date.now();
+  logger.info(`[Mongo] getRecentTablesByHighscores took ${end - start}ms`);
+  return docs;
+};
+
 export default {
   getCollection,
   getAll,
@@ -102,4 +111,5 @@ export default {
   aggregate,
   findCurrentWeek,
   getRecentWeeks,
+  getRecentTables,
 };

@@ -1,4 +1,4 @@
-const getScoresByTablePipeline = (tableName) => {
+const getScoresByTable = (tableName) => {
   const pipeline = [
     { $unwind: "$authors" },
     {
@@ -25,7 +25,8 @@ const getScoresByTablePipeline = (tableName) => {
         user: "$authors.versions.scores.user",
         userName: "$authors.versions.scores.username",
         score: "$authors.versions.scores.score",
-        posted: "$authors.versions.scores.createdAt",
+        // Convert createdAt to a Date object for sorting
+        posted: { $toDate: "$authors.versions.scores.createdAt" },
         postUrl: "$authors.versions.scores.postUrl",
         _id: 0,
       },
@@ -74,7 +75,7 @@ const getScoresByTablePipeline = (tableName) => {
   return pipeline;
 };
 
-const getScoresByTableAndAuthorPipeline = (tableName, authorName) => {
+const getScoresByTableAndAuthor = (tableName, authorName) => {
   const pipeline = [
     { $unwind: "$authors" },
     {
@@ -158,7 +159,7 @@ const getScoresByTableAndAuthorPipeline = (tableName, authorName) => {
   return pipeline;
 };
 
-const getScoresByTableAndAuthorAndVersionPipeline = (
+const getScoresByTableAndAuthorAndVersion = (
   tableName,
   authorName,
   versionNumber,
@@ -248,7 +249,7 @@ const getScoresByTableAndAuthorAndVersionPipeline = (
   return pipeline;
 };
 
-const getScoresByVpsIdPipeline = (vpsId) => {
+const getScoresByVpsId = (vpsId) => {
   const pipeline = [
     { $unwind: "$authors" },
     {
@@ -338,7 +339,7 @@ const getScoresByVpsIdPipeline = (vpsId) => {
   return pipeline;
 };
 
-const getFuzzyTableSearchPipeline = (searchTerm) => {
+const getFuzzyTableSearch = (searchTerm) => {
   return [
     { $match: { tableName: { $regex: `.*${searchTerm}*`, $options: "i" } } },
     { $unwind: "$authors" },
@@ -417,7 +418,7 @@ const getFuzzyTableSearchPipeline = (searchTerm) => {
   ];
 };
 
-const getTablesWithAuthorVersionPipeline = () => {
+const getTablesWithAuthorVersion = () => {
   return [
     { $unwind: "$authors" },
     {
@@ -474,11 +475,82 @@ const getTablesWithAuthorVersionPipeline = () => {
   ];
 };
 
-export {
-  getScoresByTablePipeline,
-  getScoresByTableAndAuthorPipeline,
-  getScoresByTableAndAuthorAndVersionPipeline,
-  getScoresByVpsIdPipeline,
-  getFuzzyTableSearchPipeline,
-  getTablesWithAuthorVersionPipeline,
+const getRecentTablesByHighscores = (limit, offset) => {
+  return [
+    { $unwind: "$authors" },
+    {
+      $unwind: { path: "$authors.versions", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $unwind: {
+        path: "$authors.versions.scores",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $project: {
+        tableId: { $toString: "$_id" },
+        tableName: "$tableName",
+        authorId: { $toString: "$authors._id" },
+        authorName: "$authors.authorName",
+        versionId: { $toString: "$authors.versions._id" },
+        versionNumber: "$authors.versions.versionNumber",
+        scoreId: { $toString: "$authors.versions.scores._id" },
+        user: "$authors.versions.scores.user",
+        userName: "$authors.versions.scores.username",
+        score: "$authors.versions.scores.score",
+        posted: { $toDate: "$authors.versions.scores.createdAt" },
+        postUrl: "$authors.versions.scores.postUrl",
+        _id: 0,
+      },
+    },
+    {
+      $group: {
+        _id: {
+          tableId: "$tableId",
+          tableName: "$tableName",
+          authorId: "$authorId",
+          authorName: "$authorName",
+          versionId: "$versionId",
+          versionNumber: "$versionNumber",
+        },
+        latestScoreDate: { $max: "$posted" },
+        scores: {
+          $push: {
+            scoreId: "$scoreId",
+            user: "$user",
+            userName: "$userName",
+            score: "$score",
+            posted: "$posted",
+            postUrl: "$postUrl",
+          },
+        },
+      },
+    },
+    { $sort: { latestScoreDate: -1 } },
+    { $skip: offset },
+    { $limit: limit },
+    {
+      $project: {
+        tableId: "$_id.tableId",
+        tableName: "$_id.tableName",
+        authorId: "$_id.authorId",
+        authorName: "$_id.authorName",
+        versionId: "$_id.versionId",
+        versionNumber: "$_id.versionNumber",
+        scores: "$scores",
+        _id: 0,
+      },
+    },
+  ];
+};
+
+export default {
+  getScoresByTable,
+  getScoresByTableAndAuthor,
+  getScoresByTableAndAuthorAndVersion,
+  getScoresByVpsId,
+  getFuzzyTableSearch,
+  getTablesWithAuthorVersion,
+  getRecentTablesByHighscores,
 };

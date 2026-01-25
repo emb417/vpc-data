@@ -35,7 +35,7 @@ const handleIgnoreSpaceText = (
   maxWidth,
   textX,
   textY,
-  lineHeight
+  lineHeight,
 ) => {
   const words = text.split(" ");
   let wordCount = words.length;
@@ -114,7 +114,7 @@ const createTextData = (text, config, canvas) => {
       maxWidth,
       textX,
       textY,
-      lineHeight
+      lineHeight,
     );
   } else {
     const lines = text.split("\n");
@@ -126,7 +126,7 @@ const createTextData = (text, config, canvas) => {
       maxWidth,
       textX,
       textY,
-      lineHeight
+      lineHeight,
     );
     textY += lineHeight;
 
@@ -166,7 +166,7 @@ const createInternalCanvas = (content, conf) => {
 
   const canvas = Canvas.createCanvas(
     conf.maxWidth,
-    conf.customHeight || textHeightWithMargins
+    conf.customHeight || textHeightWithMargins,
   );
 
   const { textData } = createTextData(
@@ -183,7 +183,7 @@ const createInternalCanvas = (content, conf) => {
       textAlign: conf.textAlign,
       keepSpaces: conf.keepSpaces,
     },
-    canvas
+    canvas,
   );
   const ctx = canvas.getContext("2d");
 
@@ -220,4 +220,4 @@ const generateImage = async (content, config) => {
   return dataUrl;
 };
 
-export { generateImage };
+export default { generateImage };
