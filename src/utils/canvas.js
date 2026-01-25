@@ -1,6 +1,16 @@
 import * as fs from "fs/promises";
 import * as Canvas from "canvas";
 
+// Store registered fonts to avoid re-registering
+const registeredFonts = new Set();
+
+const registerFontOnce = (fontPath, fontFamily) => {
+  if (fontPath && !registeredFonts.has(fontPath)) {
+    Canvas.registerFont(fontPath, { family: fontFamily });
+    registeredFonts.add(fontPath);
+  }
+};
+
 const DEFAULTS = {
   bgColor: "#fff",
   customHeight: 0,
@@ -74,9 +84,7 @@ const createTextData = (text, config, canvas) => {
     keepSpaces,
   } = config;
 
-  if (fontPath) {
-    Canvas.registerFont(fontPath, { family: fontFamily });
-  }
+  registerFontOnce(fontPath, fontFamily);
 
   const textCanvas = canvas || Canvas.createCanvas(maxWidth, 100);
   const textContext = textCanvas.getContext("2d");

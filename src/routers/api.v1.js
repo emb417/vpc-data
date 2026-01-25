@@ -8,6 +8,7 @@ import {
   getTablesWithAuthorVersionPipeline,
   getScoresByTableAndAuthorPipeline,
   getScoresByTableAndAuthorAndVersionPipeline,
+  getWeeksByChannelNamePipeline,
 } from "../utils/pipeline.js";
 
 const router = express.Router();
@@ -80,7 +81,7 @@ router.get("/scoresByTableAndAuthorAndVersion", async (req, res) => {
   const pipeline = getScoresByTableAndAuthorAndVersionPipeline(
     tableName,
     authorName,
-    versionNumber
+    versionNumber,
   );
   const table = await mongoHelper.aggregate(pipeline, "tables");
   res.send(table);
@@ -92,26 +93,7 @@ router.get("/weeks", async (req, res) => {
 });
 
 router.get("/weeksByChannelName", async (req, res) => {
-  const pipeline = [
-    {
-      $group: {
-        _id: {
-          channelName: "$channelName",
-        },
-        weeks: {
-          $addToSet: "$$ROOT",
-        },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        channelName: "$_id.channelName",
-        weeks: "$weeks",
-      },
-    },
-    { $sort: { channelName: 1 } },
-  ];
+  const pipeline = getWeeksByChannelNamePipeline();
   const weeks = await mongoHelper.aggregate(pipeline, "weeks");
   res.send(weeks);
 });
@@ -120,6 +102,13 @@ router.get("/currentWeek", async (req, res) => {
   const channelName = req.query.channelName ?? "competition-corner";
   const week = await mongoHelper.findCurrentWeek("weeks", channelName);
   res.send(week);
+});
+
+router.get("/recentWeeks", async (req, res) => {
+  const channelName = req.query.channelName ?? "competition-corner";
+  const limit = parseInt(req.query.limit) || 13;
+  const weeks = await mongoHelper.getRecentWeeks(channelName, limit);
+  res.send(weeks);
 });
 
 export default router;
