@@ -1,11 +1,5 @@
 const getScoresByTablePipeline = (tableName) => {
-  const pipeline = [];
-
-  if (tableName) {
-    pipeline.push({ $match: { tableName: tableName } });
-  }
-
-  pipeline.push(
+  const pipeline = [
     { $unwind: "$authors" },
     {
       $unwind: {
@@ -36,7 +30,11 @@ const getScoresByTablePipeline = (tableName) => {
         _id: 0,
       },
     },
-  );
+  ];
+
+  if (tableName) {
+    pipeline.push({ $match: { tableName: tableName } });
+  }
 
   pipeline.push(
     { $sort: { tableName: 1, score: -1 } },
@@ -77,19 +75,7 @@ const getScoresByTablePipeline = (tableName) => {
 };
 
 const getScoresByTableAndAuthorPipeline = (tableName, authorName) => {
-  const pipeline = [];
-
-  if (tableName && authorName) {
-    pipeline.push({
-      $match: { tableName: tableName, "authors.authorName": authorName },
-    });
-  } else if (tableName) {
-    pipeline.push({ $match: { tableName: tableName } });
-  } else if (authorName) {
-    pipeline.push({ $match: { "authors.authorName": authorName } });
-  }
-
-  pipeline.push(
+  const pipeline = [
     { $unwind: "$authors" },
     {
       $unwind: {
@@ -103,14 +89,6 @@ const getScoresByTableAndAuthorPipeline = (tableName, authorName) => {
         preserveNullAndEmptyArrays: true,
       },
     },
-  );
-
-  // Filter specific author after unwind if we matched by authorName initially
-  if (authorName) {
-    pipeline.push({ $match: { "authors.authorName": authorName } });
-  }
-
-  pipeline.push(
     {
       $project: {
         tableId: "$_id",
@@ -128,6 +106,13 @@ const getScoresByTableAndAuthorPipeline = (tableName, authorName) => {
         _id: 0,
       },
     },
+  ];
+
+  if (tableName && authorName) {
+    pipeline.push({ $match: { tableName: tableName, authorName: authorName } });
+  }
+
+  pipeline.push(
     { $sort: { tableName: 1, authorName: 1, score: -1 } },
     {
       $group: {
@@ -178,19 +163,7 @@ const getScoresByTableAndAuthorAndVersionPipeline = (
   authorName,
   versionNumber,
 ) => {
-  const pipeline = [];
-
-  if (tableName && authorName && versionNumber) {
-    pipeline.push({
-      $match: {
-        tableName: tableName,
-        "authors.authorName": authorName,
-        "authors.versions.versionNumber": versionNumber,
-      },
-    });
-  }
-
-  pipeline.push(
+  const pipeline = [
     { $unwind: "$authors" },
     {
       $unwind: {
@@ -204,19 +177,6 @@ const getScoresByTableAndAuthorAndVersionPipeline = (
         preserveNullAndEmptyArrays: true,
       },
     },
-  );
-
-  // Filter specific author and version after unwind
-  if (authorName && versionNumber) {
-    pipeline.push({
-      $match: {
-        "authors.authorName": authorName,
-        "authors.versions.versionNumber": versionNumber,
-      },
-    });
-  }
-
-  pipeline.push(
     {
       $project: {
         tableId: "$_id",
@@ -234,6 +194,19 @@ const getScoresByTableAndAuthorAndVersionPipeline = (
         _id: 0,
       },
     },
+  ];
+
+  if (tableName && authorName && versionNumber) {
+    pipeline.push({
+      $match: {
+        tableName: tableName,
+        authorName: authorName,
+        versionNumber: versionNumber,
+      },
+    });
+  }
+
+  pipeline.push(
     { $sort: { tableName: 1, authorName: 1, score: -1 } },
     {
       $group: {
@@ -276,13 +249,7 @@ const getScoresByTableAndAuthorAndVersionPipeline = (
 };
 
 const getScoresByVpsIdPipeline = (vpsId) => {
-  const pipeline = [];
-
-  if (vpsId) {
-    pipeline.push({ $match: { "authors.vpsId": vpsId } });
-  }
-
-  pipeline.push(
+  const pipeline = [
     { $unwind: "$authors" },
     {
       $unwind: {
@@ -296,13 +263,6 @@ const getScoresByVpsIdPipeline = (vpsId) => {
         preserveNullAndEmptyArrays: true,
       },
     },
-  );
-
-  if (vpsId) {
-    pipeline.push({ $match: { "authors.vpsId": vpsId } });
-  }
-
-  pipeline.push(
     {
       $project: {
         tableId: "$_id",
@@ -322,6 +282,13 @@ const getScoresByVpsIdPipeline = (vpsId) => {
         _id: 0,
       },
     },
+  ];
+
+  if (vpsId) {
+    pipeline.push({ $match: { vpsId: vpsId } });
+  }
+
+  pipeline.push(
     { $sort: { tableName: 1, score: -1 } },
     {
       $group: {
@@ -507,35 +474,6 @@ const getTablesWithAuthorVersionPipeline = () => {
   ];
 };
 
-const getWeeksByChannelNamePipeline = () => {
-  return [
-    {
-      $project: {
-        _id: 0,
-        channelName: "$channelName",
-        weekData: "$$ROOT",
-      },
-    },
-    { $sort: { weekNumber: -1 } },
-    {
-      $group: {
-        _id: {
-          channelName: "$channelName",
-        },
-        weeks: { $push: "$weekData" },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        channelName: "$_id.channelName",
-        weeks: "$weeks",
-      },
-    },
-    { $sort: { channelName: 1 } },
-  ];
-};
-
 export {
   getScoresByTablePipeline,
   getScoresByTableAndAuthorPipeline,
@@ -543,5 +481,4 @@ export {
   getScoresByVpsIdPipeline,
   getFuzzyTableSearchPipeline,
   getTablesWithAuthorVersionPipeline,
-  getWeeksByChannelNamePipeline,
 };
