@@ -493,6 +493,7 @@ const getRecentTablesByHighscores = (limit, offset) => {
         tableName: "$tableName",
         authorId: { $toString: "$authors._id" },
         authorName: "$authors.authorName",
+        vpsId: "$authors.vpsId",
         versionId: { $toString: "$authors.versions._id" },
         versionNumber: "$authors.versions.versionNumber",
         scoreId: { $toString: "$authors.versions.scores._id" },
@@ -511,6 +512,7 @@ const getRecentTablesByHighscores = (limit, offset) => {
           tableName: "$tableName",
           authorId: "$authorId",
           authorName: "$authorName",
+          vpsId: "$vpsId",
           versionId: "$versionId",
           versionNumber: "$versionNumber",
         },
@@ -528,18 +530,39 @@ const getRecentTablesByHighscores = (limit, offset) => {
       },
     },
     { $sort: { latestScoreDate: -1 } },
-    { $skip: offset },
-    { $limit: limit },
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        results: [
+          { $skip: offset },
+          { $limit: limit },
+          {
+            $project: {
+              tableId: "$_id.tableId",
+              tableName: "$_id.tableName",
+              authorId: "$_id.authorId",
+              authorName: "$_id.authorName",
+              vpsId: "$_id.vpsId",
+              versionId: "$_id.versionId",
+              versionNumber: "$_id.versionNumber",
+              scores: {
+                $sortArray: {
+                  input: "$scores",
+                  sortBy: { score: -1 },
+                },
+              },
+              _id: 0,
+            },
+          },
+        ],
+      },
+    },
     {
       $project: {
-        tableId: "$_id.tableId",
-        tableName: "$_id.tableName",
-        authorId: "$_id.authorId",
-        authorName: "$_id.authorName",
-        versionId: "$_id.versionId",
-        versionNumber: "$_id.versionNumber",
-        scores: "$scores",
-        _id: 0,
+        totalCount: {
+          $ifNull: [{ $arrayElemAt: ["$totalCount.count", 0] }, 0],
+        },
+        results: 1,
       },
     },
   ];
