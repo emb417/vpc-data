@@ -491,6 +491,7 @@ const getRecentTablesByHighscores = (limit, offset) => {
       $project: {
         tableId: { $toString: "$_id" },
         tableName: "$tableName",
+        tableUrl: "$authors.versions.versionUrl",
         authorId: { $toString: "$authors._id" },
         authorName: "$authors.authorName",
         vpsId: "$authors.vpsId",
@@ -510,6 +511,7 @@ const getRecentTablesByHighscores = (limit, offset) => {
         _id: {
           tableId: "$tableId",
           tableName: "$tableName",
+          tableUrl: "$tableUrl",
           authorId: "$authorId",
           authorName: "$authorName",
           vpsId: "$vpsId",
@@ -540,6 +542,7 @@ const getRecentTablesByHighscores = (limit, offset) => {
             $project: {
               tableId: "$_id.tableId",
               tableName: "$_id.tableName",
+              tableUrl: "$_id.tableUrl",
               authorId: "$_id.authorId",
               authorName: "$_id.authorName",
               vpsId: "$_id.vpsId",
