@@ -121,20 +121,37 @@ router.get("/currentWeek", async (req, res) => {
 router.get("/recentWeeks", async (req, res) => {
   const channelName = req.query.channelName ?? "competition-corner";
   const limit = parseInt(req.query.limit) || 13;
-  const weeks = await mongoHelper.getRecentWeeks(channelName, limit);
+  const offset = parseInt(req.query.offset) || 0;
+  const searchTerm = req.query.searchTerm ?? "";
+  const weeks = await mongoHelper.getRecentWeeks(
+    channelName,
+    limit,
+    offset,
+    searchTerm,
+  );
   res.send(weeks);
 });
 
 router.get("/recentTablesByHighscores", async (req, res) => {
-  const searchTerm = req.query.searchTerm;
-  const tables = await mongoHelper.getRecentTables(
-    pipelineHelper.getRecentTablesByHighscores(
-      parseInt(req.query.limit),
-      parseInt(req.query.offset) ?? 0,
-      searchTerm,
+  const tables = await mongoHelper.getTables(
+    pipelineHelper.getTablesByHighscores(
+      parseInt(req.query.limit || 4),
+      parseInt(req.query.offset || 0),
+      req.query.searchTerm,
     ),
   );
   res.send(tables);
+});
+
+router.get("/competitionWeeks", async (req, res) => {
+  const weeks = await mongoHelper.getWeeks(
+    pipelineHelper.getCompetitionWeeks(
+      parseInt(req.query.limit || 4),
+      parseInt(req.query.offset || 0),
+      req.query.searchTerm,
+    ),
+  );
+  res.send(weeks);
 });
 
 router.get("/seasonWeeks", async (req, res) => {

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { logger } from "./logger.js";
 import { MongoClient } from "mongodb";
+import { table } from "console";
 
 const DB_NAME = process.env.DB_NAME;
 const DB_USER = process.env.DB_USER;
@@ -75,12 +76,16 @@ const findCurrentWeek = async (collectionName, channelName) => {
   return doc;
 };
 
-const getRecentWeeks = async (channelName, limit) => {
+const getRecentWeeks = async (channelName, limit, offset, searchTerm = "") => {
   const collection = await getCollection("weeks");
   const start = Date.now();
+  const filter = searchTerm
+    ? { channelName, table: { $regex: `.*${searchTerm}.*`, $options: "i" } }
+    : { channelName };
   const docs = await collection
-    .find({ channelName })
+    .find(filter)
     .sort({ weekNumber: -1 })
+    .skip(offset)
     .limit(limit)
     .toArray();
   const end = Date.now();
@@ -90,12 +95,21 @@ const getRecentWeeks = async (channelName, limit) => {
   return docs;
 };
 
-const getRecentTables = async (pipeline) => {
+const getTables = async (pipeline) => {
   const collection = await getCollection("tables");
   const start = Date.now();
   const docs = await collection.aggregate(pipeline).toArray();
   const end = Date.now();
-  logger.info(`[Mongo] getRecentTablesByHighscores took ${end - start}ms`);
+  logger.info(`[Mongo] getTables took ${end - start}ms`);
+  return docs;
+};
+
+const getWeeks = async (pipeline) => {
+  const collection = await getCollection("weeks");
+  const start = Date.now();
+  const docs = await collection.aggregate(pipeline).toArray();
+  const end = Date.now();
+  logger.info(`[Mongo] getWeeks took ${end - start}ms`);
   return docs;
 };
 
@@ -124,7 +138,8 @@ export default {
   findOne,
   aggregate,
   findCurrentWeek,
+  getTables,
   getRecentWeeks,
-  getRecentTables,
+  getWeeks,
   getSeasonWeeks,
 };

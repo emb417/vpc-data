@@ -475,7 +475,7 @@ const getTablesWithAuthorVersion = () => {
   ];
 };
 
-const getRecentTablesByHighscores = (limit, offset, searchTerm) => {
+const getTablesByHighscores = (limit, offset, searchTerm) => {
   const pipeline = [];
 
   if (searchTerm) {
@@ -580,6 +580,138 @@ const getRecentTablesByHighscores = (limit, offset, searchTerm) => {
   return pipeline;
 };
 
+const getCompetitionWeeks = (limit, offset, searchTerm) => {
+  const pipeline = [];
+
+  if (searchTerm) {
+    pipeline.push({
+      $match: { table: { $regex: `.*${searchTerm}.*`, $options: "i" } },
+    });
+  }
+
+  pipeline.push(
+    {
+      $unwind: {
+        path: "$scores",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        postedDate: {
+          $dateFromString: {
+            dateString: "$scores.posted",
+            onError: null,
+            onNull: null,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        weekId: { $toString: "$_id" },
+        channelName: 1,
+        weekNumber: 1,
+        periodStart: 1,
+        periodEnd: 1,
+        table: 1,
+        tableUrl: 1,
+        romUrl: 1,
+        romName: 1,
+        b2sUrl: 1,
+        vpsId: 1,
+        season: 1,
+        currentSeasonWeekNumber: 1,
+        isArchived: 1,
+        scoreUser: "$scores.username",
+        scoreAvatar: "$scores.userAvatarUrl",
+        scoreValue: "$scores.score",
+        scorePosted: "$postedDate",
+        scoreDiff: "$scores.diff",
+        scorePoints: "$scores.points",
+
+        _id: 0,
+      },
+    },
+    {
+      $group: {
+        _id: {
+          weekId: "$weekId",
+          channelName: "$channelName",
+          weekNumber: "$weekNumber",
+          periodStart: "$periodStart",
+          periodEnd: "$periodEnd",
+          table: "$table",
+          tableUrl: "$tableUrl",
+          romUrl: "$romUrl",
+          romName: "$romName",
+          b2sUrl: "$b2sUrl",
+          vpsId: "$vpsId",
+          season: "$season",
+          currentSeasonWeekNumber: "$currentSeasonWeekNumber",
+          isArchived: "$isArchived",
+        },
+        scores: {
+          $push: {
+            username: "$scoreUser",
+            userAvatarUrl: "$scoreAvatar",
+            score: "$scoreValue",
+            posted: "$scorePosted",
+            diff: "$scoreDiff",
+            points: "$scorePoints",
+          },
+        },
+      },
+    },
+    { $sort: { "_id.weekNumber": -1 } },
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        results: [
+          { $skip: offset },
+          { $limit: limit },
+          {
+            $project: {
+              weekId: "$_id.weekId",
+              channelName: "$_id.channelName",
+              weekNumber: "$_id.weekNumber",
+              periodStart: "$_id.periodStart",
+              periodEnd: "$_id.periodEnd",
+              table: "$_id.table",
+              tableUrl: "$_id.tableUrl",
+              romUrl: "$_id.romUrl",
+              romName: "$_id.romName",
+              b2sUrl: "$_id.b2sUrl",
+              vpsId: "$_id.vpsId",
+              season: "$_id.season",
+              currentSeasonWeekNumber: "$_id.currentSeasonWeekNumber",
+              isArchived: "$_id.isArchived",
+              scores: {
+                $sortArray: {
+                  input: "$scores",
+                  sortBy: { score: -1 },
+                },
+              },
+
+              _id: 0,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        totalCount: {
+          $ifNull: [{ $arrayElemAt: ["$totalCount.count", 0] }, 0],
+        },
+        results: 1,
+      },
+    },
+  );
+
+  return pipeline;
+};
+
 export default {
   getScoresByTable,
   getScoresByTableAndAuthor,
@@ -587,5 +719,6 @@ export default {
   getScoresByVpsId,
   getFuzzyTableSearch,
   getTablesWithAuthorVersion,
-  getRecentTablesByHighscores,
+  getTablesByHighscores,
+  getCompetitionWeeks,
 };
