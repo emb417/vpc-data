@@ -290,26 +290,24 @@ const getScoresByVpsId = (vpsId) => {
   }
 
   pipeline.push(
-    { $sort: { tableName: 1, score: -1 } },
+    { $sort: { tableName: 1, versionNumber: -1, score: -1 } },
     {
       $group: {
         _id: {
+          tableId: "$tableId",
           tableName: "$tableName",
+          authorId: "$authorId",
           authorName: "$authorName",
-          vpsId: "$vpsId",
           comment: "$comment",
+          versionId: "$versionId",
+          versionNumber: "$versionNumber",
+          vpsId: "$vpsId",
         },
         scores: {
           $push: {
             $cond: [
               { $gt: ["$scoreId", 0] },
               {
-                tableId: "$tableId",
-                tableName: "$tableName",
-                authorId: "$authorId",
-                authorName: "$authorName",
-                versionId: "$versionId",
-                versionNumber: "$versionNumber",
                 scoreId: "$scoreId",
                 user: "$user",
                 userName: "$userName",
@@ -329,6 +327,7 @@ const getScoresByVpsId = (vpsId) => {
         tableName: "$_id.tableName",
         authorName: "$_id.authorName",
         comment: "$_id.comment",
+        versionNumber: "$_id.versionNumber",
         scores: { $setDifference: ["$scores", [null]] },
         _id: 0,
       },
@@ -361,6 +360,7 @@ const getFuzzyTableSearch = (searchTerm) => {
         tableName: "$tableName",
         authorId: "$authors._id",
         authorName: "$authors.authorName",
+        comment: "$authors.comment",
         vpsId: "$authors.vpsId",
         versionId: "$authors.versions._id",
         versionNumber: "$authors.versions.versionNumber",
@@ -373,7 +373,7 @@ const getFuzzyTableSearch = (searchTerm) => {
         _id: 0,
       },
     },
-    { $sort: { tableName: 1, vpsId: 1, score: -1 } },
+    { $sort: { tableName: 1, versionNumber: -1, score: -1 } },
     {
       $group: {
         _id: {
@@ -381,6 +381,9 @@ const getFuzzyTableSearch = (searchTerm) => {
           tableName: "$tableName",
           authorId: "$authorId",
           authorName: "$authorName",
+          comment: "$comment",
+          versionId: "$versionId",
+          versionNumber: "$versionNumber",
           vpsId: "$vpsId",
         },
         scores: {
@@ -388,8 +391,6 @@ const getFuzzyTableSearch = (searchTerm) => {
             $cond: [
               { $gt: ["$scoreId", 0] },
               {
-                versionId: "$versionId",
-                versionNumber: "$versionNumber",
                 scoreId: "$scoreId",
                 user: "$user",
                 userName: "$userName",
@@ -405,11 +406,11 @@ const getFuzzyTableSearch = (searchTerm) => {
     },
     {
       $project: {
-        tableId: "$_id.tableId",
-        tableName: "$_id.tableName",
-        authorId: "$_id.authorId",
-        authorName: "$_id.authorName",
         vpsId: "$_id.vpsId",
+        tableName: "$_id.tableName",
+        authorName: "$_id.authorName",
+        comment: "$_id.comment",
+        versionNumber: "$_id.versionNumber",
         scores: { $setDifference: ["$scores", [null]] },
         _id: 0,
       },
