@@ -580,10 +580,12 @@ const getTablesByHighscores = (limit, offset, searchTerm) => {
   return pipeline;
 };
 
-const getCompetitionWeeks = (limit, offset, searchTerm) => {
+const getCompetitionWeeks = (limit, offset, searchTerm, week) => {
   const pipeline = [];
 
-  if (searchTerm) {
+  if (week) {
+    pipeline.push({ $match: { weekNumber: week } });
+  } else if (searchTerm) {
     pipeline.push({
       $match: { table: { $regex: `.*${searchTerm}.*`, $options: "i" } },
     });

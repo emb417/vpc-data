@@ -149,6 +149,7 @@ router.get("/competitionWeeks", async (req, res) => {
       parseInt(req.query.limit || 4),
       parseInt(req.query.offset || 0),
       req.query.searchTerm,
+      parseInt(req.query.week),
     ),
   );
   res.send(weeks);
