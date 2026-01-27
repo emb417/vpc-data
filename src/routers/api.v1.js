@@ -131,10 +131,17 @@ router.get("/recentTablesByHighscores", async (req, res) => {
     pipelineHelper.getRecentTablesByHighscores(
       parseInt(req.query.limit),
       parseInt(req.query.offset) ?? 0,
-      searchTerm
+      searchTerm,
     ),
   );
   res.send(tables);
+});
+
+router.get("/seasonWeeks", async (req, res) => {
+  const channelName = req.query.channelName ?? "competition-corner";
+  const season = parseInt(req.query.season) ?? 1;
+  const weeks = await mongoHelper.getSeasonWeeks(channelName, season);
+  res.send(weeks);
 });
 
 export default router;

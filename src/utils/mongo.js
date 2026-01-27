@@ -99,6 +99,20 @@ const getRecentTables = async (pipeline) => {
   return docs;
 };
 
+const getSeasonWeeks = async (channelName, season) => {
+  const collection = await getCollection("weeks");
+  const start = Date.now();
+  const docs = await collection
+    .find({ channelName, season })
+    .sort({ weekNumber: -1 })
+    .toArray();
+  const end = Date.now();
+  logger.info(
+    `[Mongo] getSeasonWeeks(${channelName} season ${season}) took ${end - start}ms`,
+  );
+  return docs;
+};
+
 export default {
   getCollection,
   getAll,
@@ -112,4 +126,5 @@ export default {
   findCurrentWeek,
   getRecentWeeks,
   getRecentTables,
+  getSeasonWeeks,
 };
