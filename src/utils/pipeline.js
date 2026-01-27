@@ -475,8 +475,16 @@ const getTablesWithAuthorVersion = () => {
   ];
 };
 
-const getRecentTablesByHighscores = (limit, offset) => {
-  return [
+const getRecentTablesByHighscores = (limit, offset, searchTerm) => {
+  const pipeline = [];
+
+  if (searchTerm) {
+    pipeline.push({
+      $match: { tableName: { $regex: `.*${searchTerm}.*`, $options: "i" } },
+    });
+  }
+
+  pipeline.push(
     { $unwind: "$authors" },
     {
       $unwind: { path: "$authors.versions", preserveNullAndEmptyArrays: true },
@@ -568,7 +576,8 @@ const getRecentTablesByHighscores = (limit, offset) => {
         results: 1,
       },
     },
-  ];
+  );
+  return pipeline;
 };
 
 export default {

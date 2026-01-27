@@ -50,13 +50,19 @@ The following variables are expected in the `.env` file:
 
 ## API Endpoints (v1)
 
-- `GET /api/v1/tables`: List all tables.
-- `GET /api/v1/tablesWithAuthorVersion`: List tables with detailed version/author info.
-- `GET /api/v1/scoresByTable?tableName=...`: Get scores for a specific table.
-- `GET /api/v1/scoresByVpsId?vpsId=...`: Get scores by VPS ID.
-- `GET /api/v1/weeks`: List all competition weeks.
-- `GET /api/v1/currentWeek?channelName=...`: Get the active week for a channel.
-- `POST /api/v1/convert`: Converts text in `req.body.text` to a Data URI image.
+- `POST /api/v1/convert`: Converts text in `req.body.text` to a Data URI image, used to generate high score leaderboard images.
+- `GET /api/v1/scoresByTable?tableName=...`: Get all scores for all tables, tableName can be supplied to filter results.
+- `GET /api/v1/scoresByTableAndAuthor?tableName=...&authorName=...`: Get all scores for all tables grouped by author, tableName and authorName can be supplied to filter results to specific table and author combination.
+- `GET /api/v1/scoresByVpsId?vpsId=...`: Get all scores for all tables grouped by VPS ID, vpsId can be supplied to filter results to specific table.
+- `GET /api/v1/scoresByTableAndAuthorUsingFuzzyTableSearch?tableSearchTerm=...`: Get all scores for all tables grouped by author, partial tableName can be supplied to filter results to specific table and author combination.
+- `GET /api/v1/scoresByTableAndAuthorAndVersion?tableName=...&authorName=...&versionNumber=...`: Get all scores for all tables grouped by tableName, authorName, and versionNumber, which can also be supplied to filter results to specific table, author and version combination.
+- `GET /api/v1/tables`: Get metadata for all tables.
+- `GET /api/v1/tablesWithAuthorVersion`: Get metadata for all tables grouped by author and version info.
+- `GET /api/v1/weeks`: Get tables and scores for all competition weeks.
+- `GET /api/v1/weeksByChannelName?channelName=...`: Get tables and scores for all weeks grouped by channel, channelName can be supplied to filter results to a specific channel.
+- `GET /api/v1/currentWeek?channelName=...`: Get the table and scores for the active week for the competition-corner channel, channelName can be supplied to filter results to another channel.
+- `GET /api/v1/recentWeeks?limit=...&channelName=...`: Get the table and scores for the last 13 most recent weeks for the competition-corner channel, channelName can be supplied to filter results to another channel and limit can be supplied to change the number of weeks returned.
+- `GET /api/v1/recentTablesByHighscores?limit=...&offset=...&searchTerm=...`: Get the highscores for all of the tables paginated, limit can be supplied to change the number of tables returned, an offset can be supplied to change the pagination offset, and a searchTerm can be supplied to filter results based on the table name.
 
 ## Development Conventions
 

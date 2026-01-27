@@ -126,10 +126,12 @@ router.get("/recentWeeks", async (req, res) => {
 });
 
 router.get("/recentTablesByHighscores", async (req, res) => {
+  const searchTerm = req.query.searchTerm;
   const tables = await mongoHelper.getRecentTables(
     pipelineHelper.getRecentTablesByHighscores(
       parseInt(req.query.limit),
       parseInt(req.query.offset) ?? 0,
+      searchTerm
     ),
   );
   res.send(tables);
