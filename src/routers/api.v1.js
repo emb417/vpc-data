@@ -1,6 +1,6 @@
 import express from "express";
 import canvas from "../utils/canvas.js";
-import mongoHelper from "../utils/mongo.js";
+import { getDb } from "../utils/mongo.js";
 import pipelineHelper from "../utils/pipeline.js";
 
 const router = express.Router();
@@ -27,20 +27,23 @@ router.post("/convert", async (req, res) => {
 });
 
 router.get("/tables", async (req, res) => {
-  const tables = await mongoHelper.getAll("tables");
+  const db = await getDb();
+  const tables = await db.collection("tables").find({}).toArray();
   res.send(tables);
 });
 
 router.get("/tablesWithAuthorVersion", async (req, res) => {
   const pipeline = pipelineHelper.getTablesWithAuthorVersion();
-  const tables = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const tables = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(tables);
 });
 
 router.get("/scoresByTable", async (req, res) => {
   const tableName = req.query.tableName;
   const pipeline = pipelineHelper.getScoresByTable(tableName);
-  const table = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(table);
 });
 
@@ -51,21 +54,24 @@ router.get("/scoresByTableAndAuthor", async (req, res) => {
     tableName,
     authorName,
   );
-  const table = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(table);
 });
 
 router.get("/scoresByVpsId", async (req, res) => {
   const vpsId = req.query.vpsId;
   const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
-  const table = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(table);
 });
 
 router.get("/scoresByTableAndAuthorUsingFuzzyTableSearch", async (req, res) => {
   const tableSearchTerm = req.query.tableSearchTerm;
   const pipeline = pipelineHelper.getFuzzyTableSearch(tableSearchTerm);
-  const table = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(table);
 });
 
@@ -78,12 +84,14 @@ router.get("/scoresByTableAndAuthorAndVersion", async (req, res) => {
     authorName,
     versionNumber,
   );
-  const table = await mongoHelper.aggregate(pipeline, "tables");
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(table);
 });
 
 router.get("/weeks", async (req, res) => {
-  const weeks = await mongoHelper.getAll("weeks");
+  const db = await getDb();
+  const weeks = await db.collection("weeks").find({}).toArray();
   res.send(weeks);
 });
 
@@ -108,13 +116,17 @@ router.get("/weeksByChannelName", async (req, res) => {
     },
     { $sort: { channelName: 1 } },
   ];
-  const weeks = await mongoHelper.aggregate(pipeline, "weeks");
+  const db = await getDb();
+  const weeks = await db.collection("weeks").aggregate(pipeline).toArray();
   res.send(weeks);
 });
 
 router.get("/currentWeek", async (req, res) => {
   const channelName = req.query.channelName ?? "competition-corner";
-  const week = await mongoHelper.findCurrentWeek("weeks", channelName);
+  const db = await getDb();
+  const week = await db
+    .collection("weeks")
+    .findOne({ isArchived: false, channelName });
   res.send(week);
 });
 
@@ -123,42 +135,53 @@ router.get("/recentWeeks", async (req, res) => {
   const limit = parseInt(req.query.limit) || 13;
   const offset = parseInt(req.query.offset) || 0;
   const searchTerm = req.query.searchTerm ?? "";
-  const weeks = await mongoHelper.getRecentWeeks(
-    channelName,
-    limit,
-    offset,
-    searchTerm,
-  );
+  const filter = searchTerm
+    ? { channelName, table: { $regex: `.*${searchTerm}.*`, $options: "i" } }
+    : { channelName };
+
+  const db = await getDb();
+  const weeks = await db
+    .collection("weeks")
+    .find(filter)
+    .sort({ weekNumber: -1 })
+    .skip(offset)
+    .limit(limit)
+    .toArray();
   res.send(weeks);
 });
 
 router.get("/recentTablesByHighscores", async (req, res) => {
-  const tables = await mongoHelper.getTables(
-    pipelineHelper.getTablesByHighscores(
-      parseInt(req.query.limit || 4),
-      parseInt(req.query.offset || 0),
-      req.query.searchTerm,
-    ),
+  const pipeline = pipelineHelper.getTablesByHighscores(
+    parseInt(req.query.limit || 4),
+    parseInt(req.query.offset || 0),
+    req.query.searchTerm,
   );
+  const db = await getDb();
+  const tables = await db.collection("tables").aggregate(pipeline).toArray();
   res.send(tables);
 });
 
 router.get("/competitionWeeks", async (req, res) => {
-  const weeks = await mongoHelper.getWeeks(
-    pipelineHelper.getCompetitionWeeks(
-      parseInt(req.query.limit || 4),
-      parseInt(req.query.offset || 0),
-      req.query.searchTerm,
-      parseInt(req.query.week),
-    ),
+  const pipeline = pipelineHelper.getCompetitionWeeks(
+    parseInt(req.query.limit || 4),
+    parseInt(req.query.offset || 0),
+    req.query.searchTerm,
+    parseInt(req.query.week),
   );
+  const db = await getDb();
+  const weeks = await db.collection("weeks").aggregate(pipeline).toArray();
   res.send(weeks);
 });
 
 router.get("/seasonWeeks", async (req, res) => {
   const channelName = req.query.channelName ?? "competition-corner";
   const season = parseInt(req.query.season) ?? 1;
-  const weeks = await mongoHelper.getSeasonWeeks(channelName, season);
+  const db = await getDb();
+  const weeks = await db
+    .collection("weeks")
+    .find({ channelName, season })
+    .sort({ weekNumber: -1 })
+    .toArray();
   res.send(weeks);
 });
 

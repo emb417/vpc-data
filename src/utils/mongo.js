@@ -1,145 +1,68 @@
 import "dotenv/config";
 import { logger } from "./logger.js";
 import { MongoClient } from "mongodb";
-import { table } from "console";
 
 const DB_NAME = process.env.DB_NAME;
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
 
-const uri = `mongodb+srv://${DB_USER}:${DB_PASSWORD}@cluster0.blwxx.mongodb.net/${DB_NAME}?retryWrites=true&w=majority`;
-const client = new MongoClient(uri);
+const uri = `mongodb+srv://${encodeURIComponent(DB_USER)}:${encodeURIComponent(DB_PASSWORD)}@cluster0.blwxx.mongodb.net/${DB_NAME}?retryWrites=true&w=majority&connectTimeoutMS=10000`;
 
-let dbInstance = null;
+let client = null;
+let db = null;
 
-const getDb = async () => {
-  if (!dbInstance) {
-    await client.connect();
-    dbInstance = client.db(DB_NAME);
+export const initDb = async () => {
+  if (db) {
+    return db;
   }
-  return dbInstance;
-};
 
-const getCollection = async (collectionName) => {
-  const db = await getDb();
-  return db.collection(collectionName);
-};
+  client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+  });
 
-const getAll = async (collectionName) => {
-  const collection = await getCollection(collectionName);
-  const findResult = await collection.find({}).toArray();
-  return findResult;
-};
+  let attempts = 0;
+  const maxAttempts = 10;
+  let delay = 1000;
 
-const insertMany = async (docs, collectionName) => {
-  const collection = await getCollection(collectionName);
-  await collection.insertMany(docs);
-};
-
-const insertOne = async (doc, collectionName) => {
-  const collection = await getCollection(collectionName);
-  await collection.insertOne(doc);
-};
-
-const updateOne = async (filter, update, options, collectionName) => {
-  const collection = await getCollection(collectionName);
-  await collection.updateOne(filter, update, options);
-};
-
-const deleteAll = async (collectionName) => {
-  const collection = await getCollection(collectionName);
-  await collection.deleteMany({});
-};
-
-const find = async (filter, collectionName) => {
-  const collection = await getCollection(collectionName);
-  const docs = await collection.find(filter).toArray();
-  return docs;
-};
-
-const findOne = async (filter, collectionName) => {
-  const collection = await getCollection(collectionName);
-  const doc = await collection.findOne(filter);
-  return doc;
-};
-
-const aggregate = async (pipeline, collectionName) => {
-  const collection = await getCollection(collectionName);
-  const docs = await collection.aggregate(pipeline).toArray();
-
-  return docs;
-};
-
-const findCurrentWeek = async (collectionName, channelName) => {
-  const collection = await getCollection(collectionName);
-  const doc = await collection.findOne({ isArchived: false, channelName });
-  return doc;
-};
-
-const getRecentWeeks = async (channelName, limit, offset, searchTerm = "") => {
-  const collection = await getCollection("weeks");
-  const start = Date.now();
-  const filter = searchTerm
-    ? { channelName, table: { $regex: `.*${searchTerm}.*`, $options: "i" } }
-    : { channelName };
-  const docs = await collection
-    .find(filter)
-    .sort({ weekNumber: -1 })
-    .skip(offset)
-    .limit(limit)
-    .toArray();
-  const end = Date.now();
-  logger.info(
-    `[Mongo] getRecentWeeks(${channelName}, limit=${limit}) took ${end - start}ms`,
+  while (attempts < maxAttempts) {
+    try {
+      await client.connect();
+      db = client.db(DB_NAME);
+      logger.info("[Mongo] Connected successfully to database");
+      return db;
+    } catch (err) {
+      attempts++;
+      logger.error(
+        `[Mongo] Connection failed (attempt ${attempts}/${maxAttempts}), retrying in ${delay / 1000}s: ${err.message}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, 30000);
+    }
+  }
+  throw new Error(
+    "[Mongo] Failed to connect to database after multiple retries.",
   );
-  return docs;
 };
 
-const getTables = async (pipeline) => {
-  const collection = await getCollection("tables");
-  const start = Date.now();
-  const docs = await collection.aggregate(pipeline).toArray();
-  const end = Date.now();
-  logger.info(`[Mongo] getTables took ${end - start}ms`);
-  return docs;
+export const getDb = () => {
+  if (!db) {
+    throw new Error("[Mongo] Database not initialized. Call initDb first.");
+  }
+  return db;
 };
 
-const getWeeks = async (pipeline) => {
-  const collection = await getCollection("weeks");
-  const start = Date.now();
-  const docs = await collection.aggregate(pipeline).toArray();
-  const end = Date.now();
-  logger.info(`[Mongo] getWeeks took ${end - start}ms`);
-  return docs;
-};
-
-const getSeasonWeeks = async (channelName, season) => {
-  const collection = await getCollection("weeks");
-  const start = Date.now();
-  const docs = await collection
-    .find({ channelName, season })
-    .sort({ weekNumber: -1 })
-    .toArray();
-  const end = Date.now();
-  logger.info(
-    `[Mongo] getSeasonWeeks(${channelName} season ${season}) took ${end - start}ms`,
-  );
-  return docs;
+export const closeDb = async () => {
+  if (client) {
+    await client.close();
+    logger.info("[Mongo] Database connection closed.");
+    client = null;
+    db = null;
+  }
 };
 
 export default {
-  getCollection,
-  getAll,
-  insertMany,
-  insertOne,
-  updateOne,
-  deleteAll,
-  find,
-  findOne,
-  aggregate,
-  findCurrentWeek,
-  getTables,
-  getRecentWeeks,
-  getWeeks,
-  getSeasonWeeks,
+  initDb,
+  getDb,
+  closeDb,
 };

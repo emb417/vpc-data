@@ -21,7 +21,7 @@ The project follows a modular structure:
 
 - `src/index.js`: The entry point. Initializes Express, sets up logging, and mounts routes.
 - `src/routers/api.v1.js`: Defines the v1 API endpoints and handles request logic.
-- `src/utils/mongo.js`: A helper for MongoDB operations (connect, find, aggregate, etc.).
+- `src/utils/mongo.js`: Manages MongoDB connections, providing `initDb()` for connection with retry logic, `getDb()` to retrieve the database instance, and `closeDb()` for graceful disconnection. It also constructs the connection URI using environment variables.
 - `src/utils/pipeline.js`: Contains pure functions that return complex MongoDB aggregation pipelines for querying nested score data.
 - `src/utils/canvas.js`: Functional utility for generating images from text using custom fonts.
 - `src/resources/`: Contains the `.ttf` and `.otf` fonts used by the Canvas utility.
@@ -41,12 +41,14 @@ The project follows a modular structure:
 
 ### Environment Variables
 
-The following variables are expected in the `.env` file:
+The following variables are expected in the `.env` file to construct the MongoDB connection URI:
 
 - `PORT`: (Optional) Port to listen on (defaults to 3080).
 - `DB_NAME`: MongoDB database name.
 - `DB_USER`: MongoDB username.
 - `DB_PASSWORD`: MongoDB password.
+
+The MongoDB connection also uses `serverSelectionTimeoutMS: 30000` and `socketTimeoutMS: 45000` as configured in `src/utils/mongo.js` for robust connection handling.
 
 ## API Endpoints (v1)
 
