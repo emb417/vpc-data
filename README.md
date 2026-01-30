@@ -10,6 +10,8 @@ The VPC Data Service provides the following API endpoints:
 
 ### Tables
 
+---
+
 **GET /tables**: Returns a list of all tables.
 
 - Example:
