@@ -196,7 +196,9 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/iscored?roomId=1011
 
 ### Utilities
 
-- **POST /convert**: Converts text to a PNG image (Data URI). Request body should be JSON with a `text` field.
+---
+
+**POST /convert**: Converts text to a PNG image (Data URI). Request body should be JSON with a `text` field.
   - Example:
 
 ```bash
@@ -204,3 +206,5 @@ curl -X POST -H "Content-Type: application/json" -d '{"text":"Hello World"}' htt
 ```
 
 - Response: A Data URI string representing the generated image
+
+---
