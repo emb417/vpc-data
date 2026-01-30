@@ -63,8 +63,11 @@ The MongoDB connection also uses `serverSelectionTimeoutMS: 30000` and `socketTi
 - `GET /api/v1/weeks`: Get tables and scores for all competition weeks.
 - `GET /api/v1/weeksByChannelName?channelName=...`: Get tables and scores for all weeks grouped by channel, channelName can be supplied to filter results to a specific channel.
 - `GET /api/v1/currentWeek?channelName=...`: Get the table and scores for the active week for the competition-corner channel, channelName can be supplied to filter results to another channel.
-- `GET /api/v1/recentWeeks?limit=...&channelName=...`: Get the table and scores for the last 13 most recent weeks for the competition-corner channel, channelName can be supplied to filter results to another channel and limit can be supplied to change the number of weeks returned.
+- `GET /api/v1/recentWeeks?limit=...&offset=...&searchTerm=...&channelName=...`: Get the table and scores for the most recent weeks for a specific channel (defaults to competition-corner), with support for pagination and searching.
 - `GET /api/v1/recentTablesByHighscores?limit=...&offset=...&searchTerm=...`: Get the highscores for all of the tables paginated, limit can be supplied to change the number of tables returned, an offset can be supplied to change the pagination offset, and a searchTerm can be supplied to filter results based on the table name.
+- `GET /api/v1/competitionWeeks?limit=...&offset=...&searchTerm=...&week=...`: Get competition weeks with scores, supporting pagination, searching by table name, or filtering by a specific week number.
+- `GET /api/v1/seasonWeeks?channelName=...&season=...`: Get all weeks for a specific season and channel.
+- `GET /api/v1/iscored?roomId=...`: A proxy endpoint that retrieves all games and scores for a specific room from `iscored.info`.
 
 ## Development Conventions
 

@@ -28,6 +28,15 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/tablesWithAuthorVersion
 
 - Response: A JSON array of table objects with author and version information
 
+- **GET /recentTablesByHighscores**: Returns tables sorted by the most recent highscores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`.
+  - Example:
+
+```bash
+curl https://virtualpinballchat.com:8443/vpc/api/v1/recentTablesByHighscores?limit=10&searchTerm=Addams
+```
+
+- Response: A JSON object containing `totalCount` and `results` (an array of table objects with scores)
+
 ### Scores
 
 - **GET /scoresByTable**: Returns scores for a specific table. Query parameter: `tableName`.
@@ -104,6 +113,33 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/currentWeek?channelName=myCh
 
 - Response: A JSON object containing the current week for the specified channel
 
+- **GET /recentWeeks**: Returns the most recent weeks for a specific channel. Query parameters: `channelName` (default "competition-corner"), `limit` (default 13), `offset` (default 0), `searchTerm`.
+  - Example:
+
+```bash
+curl https://virtualpinballchat.com:8443/vpc/api/v1/recentWeeks?limit=5
+```
+
+- Response: A JSON array of week objects
+
+- **GET /competitionWeeks**: Returns competition weeks with scores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`, `week` (specific week number).
+  - Example:
+
+```bash
+curl https://virtualpinballchat.com:8443/vpc/api/v1/competitionWeeks?limit=10&week=1
+```
+
+- Response: A JSON object containing `totalCount` and `results` (an array of week objects with scores)
+
+- **GET /seasonWeeks**: Returns all weeks for a specific season and channel. Query parameters: `channelName` (default "competition-corner"), `season` (default 1).
+  - Example:
+
+```bash
+curl https://virtualpinballchat.com:8443/vpc/api/v1/seasonWeeks?season=1
+```
+
+- Response: A JSON array of week objects for the specified season
+
 - **GET /iscored**: Returns scores for a specific room ID. Query parameter: `roomId`.
   - Example:
 
@@ -112,3 +148,14 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/iscored?roomId=1011
 ```
 
 - Response: A JSON object containing scores for the specified room ID
+
+### Utilities
+
+- **POST /convert**: Converts text to a PNG image (Data URI). Request body should be JSON with a `text` field.
+  - Example:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"text":"Hello World"}' https://virtualpinballchat.com:8443/vpc/api/v1/convert
+```
+
+- Response: A Data URI string representing the generated image
