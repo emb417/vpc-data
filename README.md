@@ -10,8 +10,9 @@ The VPC Data Service provides the following API endpoints:
 
 ### Tables
 
-- **GET /tables**: Returns a list of all tables.
-  - Example:
+**GET /tables**: Returns a list of all tables.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/tables
@@ -19,8 +20,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/tables
 
 - Response: A JSON array of table objects
 
-- **GET /tablesWithAuthorVersion**: Returns a list of tables with author and version information.
-  - Example:
+---
+
+**GET /tablesWithAuthorVersion**: Returns a list of tables with author and version information.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/tablesWithAuthorVersion
@@ -28,8 +32,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/tablesWithAuthorVersion
 
 - Response: A JSON array of table objects with author and version information
 
-- **GET /recentTablesByHighscores**: Returns tables sorted by the most recent highscores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`.
-  - Example:
+---
+
+**GET /recentTablesByHighscores**: Returns tables sorted by the most recent highscores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/recentTablesByHighscores?limit=10&searchTerm=Addams
@@ -39,8 +46,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/recentTablesByHighscores?lim
 
 ### Scores
 
-- **GET /scoresByTable**: Returns scores for a specific table. Query parameter: `tableName`.
-  - Example:
+---
+
+**GET /scoresByTable**: Returns scores for a specific table. Query parameter: `tableName`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTable?tableName=myTable
@@ -48,8 +58,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTable?tableName=myTa
 
 - Response: A JSON object containing scores for the specified table
 
-- **GET /scoresByTableAndAuthor**: Returns scores for a specific table and author. Query parameters: `tableName`, `authorName`.
-  - Example:
+---
+
+**GET /scoresByTableAndAuthor**: Returns scores for a specific table and author. Query parameters: `tableName`, `authorName`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthor?tableName=myTable&authorName=johnDoe
@@ -57,8 +70,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthor?table
 
 - Response: A JSON object containing scores for the specified table and author
 
-- **GET /scoresByTableAndAuthorUsingFuzzyTableSearch**: Returns scores for a specific table and author using fuzzy table search. Query parameter: `tableSearchTerm`.
-  - Example:
+---
+
+**GET /scoresByTableAndAuthorUsingFuzzyTableSearch**: Returns scores for a specific table and author using fuzzy table search. Query parameter: `tableSearchTerm`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorUsingFuzzyTableSearch?tableSearchTerm=myTable
@@ -66,8 +82,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorUsingF
 
 - Response: A JSON object containing scores for the specified table and author, using fuzzy search
 
-- **GET /scoresByTableAndAuthorAndVersion**: Returns scores for a specific table, author, and version. Query parameters: `tableName`, `authorName`, `versionNumber`.
-  - Example:
+---
+
+**GET /scoresByTableAndAuthorAndVersion**: Returns scores for a specific table, author, and version. Query parameters: `tableName`, `authorName`, `versionNumber`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorAndVersion?tableName=myTable&authorName=johnDoe&versionNumber=1.0
@@ -75,8 +94,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorAndVer
 
 - Response: A JSON object containing scores for the specified table, author, and version
 
-- **GET /scoresByVpsId**: Returns scores for a specific VPS ID. Query parameter: `vpsId`.
-  - Example:
+---
+
+**GET /scoresByVpsId**: Returns scores for a specific VPS ID. Query parameter: `vpsId`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByVpsId?vpsId=12345
@@ -86,8 +108,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByVpsId?vpsId=12345
 
 ### Weeks
 
-- **GET /weeks**: Returns a list of all weeks.
-  - Example:
+---
+
+**GET /weeks**: Returns a list of all weeks.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/weeks
@@ -95,8 +120,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/weeks
 
 - Response: A JSON array of week objects
 
-- **GET /weeksByChannelName**: Returns a list of weeks grouped by channel name.
-  - Example:
+---
+
+**GET /weeksByChannelName**: Returns a list of weeks grouped by channel name.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/weeksByChannelName
@@ -104,8 +132,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/weeksByChannelName
 
 - Response: A JSON array of week objects, grouped by channel name
 
-- **GET /currentWeek**: Returns the current week for a specific channel. Query parameter: `channelName` (optional, defaults to "competition-corner").
-  - Example:
+---
+
+**GET /currentWeek**: Returns the current week for a specific channel. Query parameter: `channelName` (optional, defaults to "competition-corner").
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/currentWeek?channelName=myChannel
@@ -113,8 +144,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/currentWeek?channelName=myCh
 
 - Response: A JSON object containing the current week for the specified channel
 
-- **GET /recentWeeks**: Returns the most recent weeks for a specific channel. Query parameters: `channelName` (default "competition-corner"), `limit` (default 13), `offset` (default 0), `searchTerm`.
-  - Example:
+---
+
+**GET /recentWeeks**: Returns the most recent weeks for a specific channel. Query parameters: `channelName` (default "competition-corner"), `limit` (default 13), `offset` (default 0), `searchTerm`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/recentWeeks?limit=5
@@ -122,8 +156,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/recentWeeks?limit=5
 
 - Response: A JSON array of week objects
 
-- **GET /competitionWeeks**: Returns competition weeks with scores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`, `week` (specific week number).
-  - Example:
+---
+
+**GET /competitionWeeks**: Returns competition weeks with scores. Supports pagination and search. Query parameters: `limit` (default 4), `offset` (default 0), `searchTerm`, `week` (specific week number).
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/competitionWeeks?limit=10&week=1
@@ -131,8 +168,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/competitionWeeks?limit=10&we
 
 - Response: A JSON object containing `totalCount` and `results` (an array of week objects with scores)
 
-- **GET /seasonWeeks**: Returns all weeks for a specific season and channel. Query parameters: `channelName` (default "competition-corner"), `season` (default 1).
-  - Example:
+---
+
+**GET /seasonWeeks**: Returns all weeks for a specific season and channel. Query parameters: `channelName` (default "competition-corner"), `season` (default 1).
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/seasonWeeks?season=1
@@ -140,8 +180,11 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/seasonWeeks?season=1
 
 - Response: A JSON array of week objects for the specified season
 
-- **GET /iscored**: Returns scores for a specific room ID. Query parameter: `roomId`.
-  - Example:
+---
+
+**GET /iscored**: Returns scores for a specific room ID. Query parameter: `roomId`.
+
+- Example:
 
 ```bash
 curl https://virtualpinballchat.com:8443/vpc/api/v1/iscored?roomId=1011
