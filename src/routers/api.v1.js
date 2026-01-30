@@ -185,4 +185,39 @@ router.get("/seasonWeeks", async (req, res) => {
   res.send(weeks);
 });
 
+router.get("/iscored", async (req, res) => {
+  const roomId = req.query.roomId;
+
+  if (!roomId) {
+    return res.status(400).json({ error: "Missing roomId" });
+  }
+
+  const targetUrl = `https://iscored.info/roomCommands.php?c=getAllGamesAndScores&roomID=${encodeURIComponent(roomId)}`;
+
+  try {
+    const response = await fetch(targetUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "vpc-proxy/1.0",
+      },
+    });
+
+    if (!response.ok) {
+      return res
+        .status(502)
+        .json({ error: "Upstream error", status: response.status });
+    }
+
+    // iscored returns JSON, not text
+    const json = await response.json();
+
+    res.setHeader("Content-Type", "application/json");
+    return res.json(json);
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: "Proxy request failed", details: err.message });
+  }
+});
+
 export default router;
