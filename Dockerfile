@@ -1,6 +1,8 @@
 # Stage 1: Build the application
 FROM node:24-slim AS builder
 
+ENV TZ=America/Los_Angeles
+
 WORKDIR /app
 
 # Install native dependencies for canvas image processing library.
@@ -24,6 +26,8 @@ COPY src/ ./
 
 # Stage 2: Create the final, minimal image
 FROM node:24-slim
+
+ENV TZ=America/Los_Angeles
 
 WORKDIR /app
 
