@@ -17,7 +17,7 @@ The VPC Data Service provides the following API endpoints:
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/tables
+curl https://virtualpinballchat.com/vpc/api/v1/tables
 ```
 
 - Response: A JSON array of table objects
@@ -29,7 +29,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/tables
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/tablesWithAuthorVersion
+curl https://virtualpinballchat.com/vpc/api/v1/tablesWithAuthorVersion
 ```
 
 - Response: A JSON array of table objects with author and version information
@@ -41,7 +41,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/tablesWithAuthorVersion
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/recentTablesByHighscores?limit=10&searchTerm=Addams
+curl https://virtualpinballchat.com/vpc/api/v1/recentTablesByHighscores?limit=10&searchTerm=Addams
 ```
 
 - Response: A JSON object containing `totalCount` and `results` (an array of table objects with scores)
@@ -55,7 +55,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/recentTablesByHighscores?lim
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTable?tableName=myTable
+curl https://virtualpinballchat.com/vpc/api/v1/scoresByTable?tableName=myTable
 ```
 
 - Response: A JSON object containing scores for the specified table
@@ -67,7 +67,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTable?tableName=myTa
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthor?tableName=myTable&authorName=johnDoe
+curl https://virtualpinballchat.com/vpc/api/v1/scoresByTableAndAuthor?tableName=myTable&authorName=johnDoe
 ```
 
 - Response: A JSON object containing scores for the specified table and author
@@ -79,7 +79,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthor?table
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorUsingFuzzyTableSearch?tableSearchTerm=myTable
+curl https://virtualpinballchat.com/vpc/api/v1/scoresByTableAndAuthorUsingFuzzyTableSearch?tableSearchTerm=myTable
 ```
 
 - Response: A JSON object containing scores for the specified table and author, using fuzzy search
@@ -91,7 +91,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorUsingF
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorAndVersion?tableName=myTable&authorName=johnDoe&versionNumber=1.0
+curl https://virtualpinballchat.com/vpc/api/v1/scoresByTableAndAuthorAndVersion?tableName=myTable&authorName=johnDoe&versionNumber=1.0
 ```
 
 - Response: A JSON object containing scores for the specified table, author, and version
@@ -103,7 +103,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByTableAndAuthorAndVer
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByVpsId?vpsId=12345
+curl https://virtualpinballchat.com/vpc/api/v1/scoresByVpsId?vpsId=12345
 ```
 
 - Response: A JSON object containing scores for the specified VPS ID
@@ -117,7 +117,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/scoresByVpsId?vpsId=12345
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/weeks
+curl https://virtualpinballchat.com/vpc/api/v1/weeks
 ```
 
 - Response: A JSON array of week objects
@@ -129,7 +129,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/weeks
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/weeksByChannelName
+curl https://virtualpinballchat.com/vpc/api/v1/weeksByChannelName
 ```
 
 - Response: A JSON array of week objects, grouped by channel name
@@ -141,7 +141,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/weeksByChannelName
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/currentWeek?channelName=myChannel
+curl https://virtualpinballchat.com/vpc/api/v1/currentWeek?channelName=myChannel
 ```
 
 - Response: A JSON object containing the current week for the specified channel
@@ -153,7 +153,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/currentWeek?channelName=myCh
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/recentWeeks?limit=5
+curl https://virtualpinballchat.com/vpc/api/v1/recentWeeks?limit=5
 ```
 
 - Response: A JSON array of week objects
@@ -165,7 +165,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/recentWeeks?limit=5
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/competitionWeeks?limit=10&week=1
+curl https://virtualpinballchat.com/vpc/api/v1/competitionWeeks?limit=10&week=1
 ```
 
 - Response: A JSON object containing `totalCount` and `results` (an array of week objects with scores)
@@ -177,7 +177,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/competitionWeeks?limit=10&we
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/seasonWeeks?season=1
+curl https://virtualpinballchat.com/vpc/api/v1/seasonWeeks?season=1
 ```
 
 - Response: A JSON array of week objects for the specified season
@@ -189,7 +189,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/seasonWeeks?season=1
 - Example:
 
 ```bash
-curl https://virtualpinballchat.com:8443/vpc/api/v1/iscored?roomId=1011
+curl https://virtualpinballchat.com/vpc/api/v1/iscored?roomId=1011
 ```
 
 - Response: A JSON object containing scores for the specified room ID
@@ -203,7 +203,7 @@ curl https://virtualpinballchat.com:8443/vpc/api/v1/iscored?roomId=1011
 - Example:
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"text":"Hello World"}' https://virtualpinballchat.com:8443/vpc/api/v1/convert
+curl -X POST -H "Content-Type: application/json" -d '{"text":"Hello World"}' https://virtualpinballchat.com/vpc/api/v1/convert
 ```
 
 - Response: A Data URI string representing the generated image
