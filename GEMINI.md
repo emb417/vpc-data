@@ -4,7 +4,7 @@ This file provides instructional context for the Virtual Pinball Chat (VPC) Data
 
 ## Project Overview
 
-The **VPC Data API** is a Node.js-based web service that provides access to competition data from the Virtual Pinball Chat community. It serves as a data backend for retrieving information about tables, scores, and competition weeks. Additionally, it includes a utility for converting text to images using the `canvas` library, likely for generating scoreboards or social media assets.
+The **VPC Data API** is a Node.js-based web service that provides access to competition data from the Virtual Pinball Chat community. It serves as a data backend for retrieving information about tables, scores, and competition weeks. Additionally, it includes a utility for converting text to images using the `canvas` library, likely for generating scoreboards or social media assets. This service now also provides access to Virtual Pinball Spreadsheet (VPS) data and handles the `/vps/api/v1` API routes, maintaining backward compatibility.
 
 ### Key Technologies
 
