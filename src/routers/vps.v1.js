@@ -50,6 +50,34 @@ router.get("/games/:name", async (req, res) => {
   }
 });
 
+router.get("/games/tables/by-url", async (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    return res.status(400).send("Missing required query parameter: url");
+  }
+  try {
+    const gamesData = await getOrRefreshGamesData();
+    const normalize = (u) => u?.replace(/\/$/, "").toLowerCase().trim();
+
+    const foundGame = gamesData.find((game) =>
+      game.tableFiles?.some((table) =>
+        table?.urls?.some((u) => normalize(u?.url) === normalize(url)),
+      ),
+    );
+    res.json(foundGame || {});
+  } catch (error) {
+    if (
+      error.message ===
+      "Service Unavailable: Could not fetch or load cache data."
+    ) {
+      res.status(503).send("Service Unavailable");
+    } else {
+      logger.error({ err: error }, `Error retrieving game by url: ${url}`);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+});
+
 router.get("/games/tables/:vpsId", async (req, res) => {
   const vpsId = req.params.vpsId;
   try {
