@@ -173,6 +173,12 @@ router.get("/competitionWeeks", async (req, res) => {
   res.send(weeks);
 });
 
+router.get("/seasons", async (req, res) => {
+  const db = await getDb();
+  const seasons = await db.collection("seasons").find({}).toArray();
+  res.send(seasons);
+});
+
 router.get("/seasonWeeks", async (req, res) => {
   const channelName = req.query.channelName ?? "competition-corner";
   const season = parseInt(req.query.season) ?? 1;
