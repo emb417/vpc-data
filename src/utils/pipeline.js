@@ -581,8 +581,10 @@ const getTablesByHighscores = (limit, offset, searchTerm) => {
   return pipeline;
 };
 
-const getCompetitionWeeks = (limit, offset, searchTerm, week) => {
+const getCompetitionWeeks = (limit, offset, searchTerm, week, channelName) => {
   const pipeline = [];
+
+  pipeline.push({ $match: { channelName } });
 
   if (week) {
     pipeline.push({ $match: { weekNumber: week } });

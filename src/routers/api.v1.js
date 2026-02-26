@@ -162,11 +162,13 @@ router.get("/recentTablesByHighscores", async (req, res) => {
 });
 
 router.get("/competitionWeeks", async (req, res) => {
+  const channelName = req.query.channelName ?? "competition-corner";
   const pipeline = pipelineHelper.getCompetitionWeeks(
     parseInt(req.query.limit || 4),
     parseInt(req.query.offset || 0),
     req.query.searchTerm,
     parseInt(req.query.week),
+    channelName,
   );
   const db = await getDb();
   const weeks = await db.collection("weeks").aggregate(pipeline).toArray();
