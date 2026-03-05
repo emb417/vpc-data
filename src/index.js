@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import apiRouter from "./routers/api.v1.js";
 import vpsApiRouter from "./routers/vps.v1.js";
 import { initDb, closeDb } from "./utils/mongo.js";
@@ -8,9 +9,25 @@ import { initializeCache } from "./utils/vps/cache.js";
 
 const PORT = process.env.PORT || 3080;
 
-const app = express();
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .filter(Boolean);
 
+const app = express();
 app.use(httpLogger);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
 app.use("/api/v1", apiRouter);
@@ -45,5 +62,5 @@ const shutdown = async (signal) => {
   process.exit(0);
 };
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
