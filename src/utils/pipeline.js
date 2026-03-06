@@ -803,7 +803,11 @@ const getScoresByPlayer = (username) => {
     { $sort: { score: -1 } },
     {
       $group: {
-        _id: "$tableName",
+        _id: {
+          tableName: "$tableName",
+          authorName: "$authorName",
+          versionNumber: "$versionNumber",
+        },
         tableName: { $first: "$tableName" },
         authorName: { $first: "$authorName" },
         versionNumber: { $first: "$versionNumber" },
