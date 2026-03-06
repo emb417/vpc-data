@@ -476,12 +476,17 @@ const getTablesWithAuthorVersion = () => {
   ];
 };
 
-const getTablesByHighscores = (limit, offset, searchTerm) => {
+const getTablesByHighscores = (limit, offset, searchTerm, vpsId) => {
   const pipeline = [];
 
   if (searchTerm) {
     pipeline.push({
       $match: { tableName: { $regex: `.*${searchTerm}.*`, $options: "i" } },
+    });
+  }
+  if (vpsId) {
+    pipeline.push({
+      $match: { "authors.vpsId": vpsId },
     });
   }
 
@@ -723,6 +728,98 @@ const getCompetitionWeeks = (limit, offset, searchTerm, week, channelName) => {
   return pipeline;
 };
 
+const getScoresByPlayer = (username) => {
+  const pipeline = [
+    { $unwind: "$authors" },
+    {
+      $unwind: {
+        path: "$authors.versions",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $unwind: {
+        path: "$authors.versions.scores",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $project: {
+        tableId: "$_id",
+        tableName: "$tableName",
+        authorId: "$authors._id",
+        authorName: "$authors.authorName",
+        vpsId: "$authors.vpsId",
+        versionId: "$authors.versions._id",
+        versionNumber: "$authors.versions.versionNumber",
+        scoreId: "$authors.versions.scores._id",
+        user: "$authors.versions.scores.user",
+        userName: "$authors.versions.scores.username",
+        score: "$authors.versions.scores.score",
+        posted: { $toDate: "$authors.versions.scores.createdAt" },
+        postUrl: "$authors.versions.scores.postUrl",
+        _id: 0,
+      },
+    },
+    { $sort: { tableName: 1, authorName: 1, versionNumber: 1, score: -1 } },
+    {
+      $group: {
+        _id: {
+          tableName: "$tableName",
+          authorName: "$authorName",
+          versionNumber: "$versionNumber",
+        },
+        vpsId: { $first: "$vpsId" },
+        scores: {
+          $push: {
+            userName: "$userName",
+            score: "$score",
+            posted: "$posted",
+            postUrl: "$postUrl",
+          },
+        },
+      },
+    },
+    {
+      $unwind: {
+        path: "$scores",
+        includeArrayIndex: "rank",
+      },
+    },
+    { $match: { "scores.userName": username } },
+    {
+      $project: {
+        tableName: "$_id.tableName",
+        authorName: "$_id.authorName",
+        versionNumber: "$_id.versionNumber",
+        vpsId: "$vpsId",
+        score: "$scores.score",
+        posted: "$scores.posted",
+        postUrl: "$scores.postUrl",
+        rank: { $add: ["$rank", 1] },
+        _id: 0,
+      },
+    },
+    { $sort: { score: -1 } },
+    {
+      $group: {
+        _id: "$tableName",
+        tableName: { $first: "$tableName" },
+        authorName: { $first: "$authorName" },
+        versionNumber: { $first: "$versionNumber" },
+        vpsId: { $first: "$vpsId" },
+        score: { $first: "$score" },
+        posted: { $first: "$posted" },
+        postUrl: { $first: "$postUrl" },
+        rank: { $first: "$rank" },
+      },
+    },
+    { $sort: { tableName: 1 } },
+  ];
+
+  return pipeline;
+};
+
 export default {
   getScoresByTable,
   getScoresByTableAndAuthor,
@@ -732,4 +829,5 @@ export default {
   getTablesWithAuthorVersion,
   getTablesByHighscores,
   getCompetitionWeeks,
+  getScoresByPlayer,
 };

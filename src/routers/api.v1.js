@@ -89,6 +89,14 @@ router.get("/scoresByTableAndAuthorAndVersion", async (req, res) => {
   res.send(table);
 });
 
+router.get("/scoresByPlayer", async (req, res) => {
+  const username = req.query.username;
+  const pipeline = pipelineHelper.getScoresByPlayer(username);
+  const db = await getDb();
+  const table = await db.collection("tables").aggregate(pipeline).toArray();
+  res.send(table);
+});
+
 router.get("/weeks", async (req, res) => {
   const db = await getDb();
   const weeks = await db.collection("weeks").find({}).toArray();
@@ -155,6 +163,7 @@ router.get("/recentTablesByHighscores", async (req, res) => {
     parseInt(req.query.limit || 4),
     parseInt(req.query.offset || 0),
     req.query.searchTerm,
+    req.query.vpsId,
   );
   const db = await getDb();
   const tables = await db.collection("tables").aggregate(pipeline).toArray();
