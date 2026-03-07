@@ -1,223 +1,355 @@
-import * as fs from "fs/promises";
 import * as Canvas from "canvas";
+import sharp from "sharp";
 
-// Store registered fonts to avoid re-registering
+// ── Font registration ─────────────────────────────────────────────────────────
 const registeredFonts = new Set();
 
-const registerFontOnce = (fontPath, fontFamily) => {
-  if (fontPath && !registeredFonts.has(fontPath)) {
-    Canvas.registerFont(fontPath, { family: fontFamily });
-    registeredFonts.add(fontPath);
+const registerFontOnce = (fontPath, fontFamily, weight = "normal") => {
+  const key = `${fontPath}::${weight}`;
+  if (fontPath && !registeredFonts.has(key)) {
+    Canvas.registerFont(fontPath, { family: fontFamily, weight });
+    registeredFonts.add(key);
   }
 };
 
-const DEFAULTS = {
-  bgColor: "#fff",
-  customHeight: 0,
-  debug: false,
-  debugFilename: "",
-  fontFamily: "Helvetica",
-  fontPath: "",
-  fontSize: 18,
-  fontWeight: "normal",
-  lineHeight: 28,
-  margin: 10,
-  maxWidth: 400,
-  textAlign: "left",
-  textColor: "#000",
-  verticalAlign: "top",
-  keepSpaces: false,
+// ── High scores renderer ──────────────────────────────────────────────────────
+const THEME = {
+  bg: "#0c0a09",
+  bgRowEven: "#1c1917",
+  bgRowOdd: "#292524",
+  border: "#431407",
+  borderSubtle: "#44403c",
+  orange: "#fdba74",
+  textTitle: "#e7e5e4",
+  textName: "#d6d3d1",
+  textMuted: "#78716c",
+  progressBar: "#a8a29e",
 };
 
-const handleIgnoreSpaceText = (
-  text,
-  textContext,
-  maxWidth,
-  textX,
-  textY,
-  lineHeight,
-) => {
-  const words = text.split(" ");
-  let wordCount = words.length;
-
-  let line = "";
-  const addNewLines = [];
-
-  for (let n = 0; n < wordCount; n += 1) {
-    let word = words[n];
-
-    if (/\n/.test(words[n])) {
-      const parts = words[n].split("\n");
-      word = parts.shift() || "";
-      addNewLines.push(n + 1);
-      words.splice(n + 1, 0, parts.join("\n"));
-      wordCount += 1;
-    }
-
-    const testLine = `${line} ${word}`.replace(/^ +/, "").replace(/ +$/, "");
-    const testLineWidth = textContext.measureText(testLine).width;
-
-    if (addNewLines.indexOf(n) > -1 || (testLineWidth > maxWidth && n > 0)) {
-      textContext.fillText(line, textX, textY);
-      line = word;
-      textY += lineHeight;
-    } else {
-      line = testLine;
-    }
-  }
-
-  textContext.fillText(line, textX, textY);
-  return [textX, textY];
+const FONTS = {
+  POPPINS_BOLD: "/app/resources/fonts/Poppins-Bold.ttf",
+  POPPINS_REGULAR: "/app/resources/fonts/Poppins-Regular.ttf",
+  MONO_REGULAR: "/app/resources/fonts/CourierPrime-Regular.ttf",
 };
 
-const createTextData = (text, config, canvas) => {
-  const {
-    bgColor,
-    fontFamily,
-    fontPath,
-    fontSize,
-    fontWeight,
-    lineHeight,
-    maxWidth,
-    textAlign,
-    textColor,
-    keepSpaces,
-  } = config;
+const registerHighScoresFonts = () => {
+  registerFontOnce(FONTS.POPPINS_BOLD, "Poppins", "bold");
+  registerFontOnce(FONTS.POPPINS_REGULAR, "Poppins", "normal");
+  registerFontOnce(FONTS.MONO_REGULAR, "CourierPrime", "normal");
+};
 
-  registerFontOnce(fontPath, fontFamily);
+const fmtScore = (n) => n.toLocaleString("en-US");
 
-  const textCanvas = canvas || Canvas.createCanvas(maxWidth, 100);
-  const textContext = textCanvas.getContext("2d");
-
-  let textX = 0;
-  let textY = 0;
-
-  if (["center"].includes(textAlign.toLowerCase())) {
-    textX = maxWidth / 2;
+const drawRoundedRect = (ctx, x, y, w, h, r, fill, stroke, strokeWidth = 1) => {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
   }
-  if (["right", "end"].includes(textAlign.toLowerCase())) {
-    textX = maxWidth;
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
   }
-  textContext.textAlign = textAlign;
+};
 
-  textContext.fillStyle = bgColor;
-  textContext.fillRect(0, 0, textCanvas.width, textCanvas.height);
+const truncateText = (ctx, text, maxWidth) => {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (ctx.measureText(t + "…").width > maxWidth && t.length > 1)
+    t = t.slice(0, -1);
+  return t + "…";
+};
 
-  textContext.fillStyle = textColor;
-  textContext.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-  textContext.textBaseline = "top";
+// Fetch a Discord avatar image, returns null on any failure
+const fetchAvatar = async (url) => {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    const pngBuffer = await sharp(Buffer.from(arrayBuffer)).png().toBuffer();
+    return await Canvas.loadImage(pngBuffer);
+  } catch (err) {
+    console.error("fetchAvatar failed:", url, err.message);
+    return null;
+  }
+};
 
-  if (!keepSpaces) {
-    [textX, textY] = handleIgnoreSpaceText(
-      text,
-      textContext,
-      maxWidth,
-      textX,
-      textY,
-      lineHeight,
-    );
+// Draw a circular avatar — real image if provided, initials fallback otherwise
+const drawAvatar = (ctx, x, y, r, image, initial) => {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (image) {
+    ctx.drawImage(image, x - r, y - r, r * 2, r * 2);
   } else {
-    const lines = text.split("\n");
-    const ignoreSpaceLinesArray = lines.splice(0, 2);
-    const ignoreSpaceText = ignoreSpaceLinesArray.join("\n ");
-    [textX, textY] = handleIgnoreSpaceText(
-      ignoreSpaceText,
-      textContext,
-      maxWidth,
-      textX,
-      textY,
-      lineHeight,
-    );
-    textY += lineHeight;
-
-    lines.forEach((line) => {
-      textContext.fillText(line, textX, textY);
-      textY += lineHeight;
-    });
+    // Initials fallback
+    ctx.fillStyle = THEME.borderSubtle;
+    ctx.fill();
+    ctx.restore();
+    // Border
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = THEME.textMuted;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Initial letter
+    ctx.fillStyle = THEME.textName;
+    ctx.font = `bold 10px Poppins`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText((initial ?? "?").toUpperCase(), x, y + 1);
+    return;
   }
 
-  const height = textY + Math.max(lineHeight, fontSize);
-
-  return {
-    textHeight: height,
-    textData: textContext.getImageData(0, 0, maxWidth, height),
-  };
+  ctx.restore();
+  // Circular border on top of image
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = THEME.borderSubtle;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 };
 
-const createInternalCanvas = (content, conf) => {
-  const { textHeight } = createTextData(content, {
-    maxWidth: conf.maxWidth - conf.margin * 2,
-    fontSize: conf.fontSize,
-    lineHeight: conf.lineHeight,
-    bgColor: conf.bgColor,
-    textColor: conf.textColor,
-    fontFamily: conf.fontFamily,
-    fontPath: conf.fontPath,
-    fontWeight: conf.fontWeight,
-    textAlign: conf.textAlign,
-    keepSpaces: conf.keepSpaces,
+// ── generateHighScoresImage ───────────────────────────────────────────────────
+//
+// Accepts data already fetched from MongoDB (output of getScoresByVpsId).
+// The router is responsible for the DB lookup; this function just renders.
+//
+// tableData shape (first element from pipeline result):
+//   {
+//     tableName:     string,
+//     authorName:    string,   // comma-separated authors
+//     versionNumber: string,
+//     scores: [{ userName, score, user: { id, avatar } }]
+//   }
+//
+// avatarImages: Map<userName, Canvas.Image | null>  (pre-fetched by router)
+
+const generateHighScoresImage = async (tableData, numRows = 20) => {
+  registerHighScoresFonts();
+
+  const { tableName, authorName, versionNumber, scores } = tableData;
+
+  // Take top N scores (pipeline already sorted score desc)
+  const topScores = (scores ?? []).slice(0, numRows);
+
+  // Fetch all avatars in parallel — construct URL from user.id + user.avatar hash
+  const avatarImages = new Map();
+  await Promise.all(
+    topScores.map(async (s) => {
+      const { id, avatar } = s.user ?? {};
+      const url =
+        id && avatar
+          ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp?size=128`
+          : null;
+      avatarImages.set(s.userName, await fetchAvatar(url));
+    }),
+  );
+
+  // Truncate authors to fit on one line using pixel measurement
+  const truncateAuthors = (str, maxWidth, font) => {
+    if (!str) return null;
+    const tmpCtx = Canvas.createCanvas(10, 10).getContext("2d");
+    tmpCtx.font = font;
+    const names = str.split(",").map((n) => n.trim());
+    let result = names[0];
+    for (let i = 1; i < names.length; i++) {
+      const next = `${result}, ${names[i]}`;
+      const suffix = `, +${names.length - i} more`;
+      if (tmpCtx.measureText(next).width > maxWidth) {
+        return `${result}${suffix}`;
+      }
+      result = next;
+    }
+    return result;
+  };
+
+  // ── Layout ──────────────────────────────────────────────────────────────────
+  const W = 350;
+  const PAD_X = 12;
+  const PAD_TOP = 12;
+  const PAD_BOT = 14;
+  const AVATAR_R = 13;
+  const ROW_H = 46;
+  const HEADER_PAD = 20;
+  const HEADER_LINE_H = 20;
+  const TITLE_MAX_W = W - PAD_X * 4;
+
+  // Helper: wrap text into lines that fit within maxWidth
+  const wrapText = (text, font, maxWidth) => {
+    const tmpCtx = Canvas.createCanvas(10, 10).getContext("2d");
+    tmpCtx.font = font;
+    const words = text.split(" ");
+    const lines = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (tmpCtx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+
+  // Header: title wraps if needed, authors on last line
+  const authorsFont = "normal 11px Poppins";
+  const authorsLine = truncateAuthors(authorName, W - PAD_X * 6, authorsFont);
+  const titleFont = "bold 18px Poppins";
+  const titleText = `${tableName}  v${versionNumber}`;
+  const titleLines = wrapText(titleText, titleFont, TITLE_MAX_W);
+
+  const headerItems = [
+    ...titleLines.map((line) => ({
+      text: line,
+      font: titleFont,
+      color: THEME.textTitle,
+    })),
+    ...(authorsLine
+      ? [{ text: authorsLine, font: authorsFont, color: THEME.textMuted }]
+      : []),
+  ];
+
+  const headerH = headerItems.length * HEADER_LINE_H + HEADER_PAD;
+  const contentW = W - PAD_X * 2;
+
+  // Column widths
+  const colRankW = 28;
+  const colAvatarW = AVATAR_R * 2 + 10; // avatar diameter + gap
+  const colScoreW = 100;
+  const colNameW = contentW - colRankW - colAvatarW - colScoreW;
+
+  const colRank = PAD_X;
+  const colAvatar = colRank + colRankW;
+  const colName = colAvatar + colAvatarW;
+  const colScore = colName + colNameW;
+
+  const totalH = PAD_TOP + headerH + topScores.length * ROW_H + PAD_BOT;
+
+  // ── Canvas (2x for crisp rendering) ─────────────────────────────────────────
+  const SCALE = 2;
+  const canvas = Canvas.createCanvas(W * SCALE, totalH * SCALE);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(SCALE, SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  ctx.fillStyle = THEME.bg;
+  ctx.fillRect(0, 0, W, totalH);
+
+  // Outer border
+  drawRoundedRect(ctx, 1, 1, W - 2, totalH - 2, 10, null, THEME.border, 2);
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  let curY = PAD_TOP + HEADER_PAD;
+
+  for (const item of headerItems) {
+    ctx.font = item.font;
+    ctx.fillStyle = item.color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(item.text, W / 2, curY);
+    curY += HEADER_LINE_H;
+  }
+
+  curY = PAD_TOP + headerH;
+
+  // ── Rows ────────────────────────────────────────────────────────────────────
+  const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
+
+  topScores.forEach((entry, i) => {
+    const rowY = curY + i * ROW_H;
+    const midY = rowY + ROW_H / 2;
+    const isEven = i % 2 === 0;
+
+    // Row background
+    drawRoundedRect(
+      ctx,
+      PAD_X,
+      rowY + 2,
+      contentW,
+      ROW_H - 3,
+      8,
+      isEven ? THEME.bgRowEven : THEME.bgRowOdd,
+    );
+
+    // ── Rank ─────────────────────────────────────────────────────────────────
+    ctx.fillStyle = THEME.orange;
+    ctx.font = "bold 15px Poppins";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(i + 1 + ".", colRank + 4, midY);
+
+    // ── Avatar ────────────────────────────────────────────────────────────────
+    const avatarImg = avatarImages.get(entry.userName) ?? null;
+    drawAvatar(
+      ctx,
+      colAvatar + AVATAR_R,
+      midY,
+      AVATAR_R,
+      avatarImg,
+      entry.userName?.[0],
+    );
+
+    // ── Name + Score on same line ─────────────────────────────────────────────
+    const nameScoreY = midY - 6;
+    const barStart = colName + 4;
+    const barEnd = W - PAD_X - 8;
+    const barW = barEnd - barStart;
+
+    ctx.font = "normal 14px Poppins";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = THEME.textName;
+    ctx.fillText(
+      truncateText(ctx, entry.userName, barW - 115),
+      barStart,
+      nameScoreY,
+    );
+
+    ctx.font = "bold 15px CourierPrime";
+    ctx.fillStyle = THEME.orange;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(fmtScore(entry.score ?? 0), barEnd, nameScoreY);
+
+    // ── Progress bar (full width, extends under score) ────────────────────────
+    const filledW = Math.max(
+      Math.floor(barW * ((entry.score ?? 0) / maxScore)),
+      0,
+    );
+    drawRoundedRect(ctx, barStart, midY + 7, barW, 3, 1, THEME.bgRowEven);
+    if (filledW > 0) {
+      drawRoundedRect(
+        ctx,
+        barStart,
+        midY + 7,
+        filledW,
+        3,
+        1,
+        THEME.progressBar,
+      );
+    }
   });
 
-  const textHeightWithMargins = textHeight + conf.margin * 2;
-
-  if (conf.customHeight && conf.customHeight < textHeightWithMargins) {
-    console.warn("Text is longer than customHeight, clipping will occur.");
-  }
-
-  const canvas = Canvas.createCanvas(
-    conf.maxWidth,
-    conf.customHeight || textHeightWithMargins,
-  );
-
-  const { textData } = createTextData(
-    content,
-    {
-      maxWidth: conf.maxWidth - conf.margin * 2,
-      fontSize: conf.fontSize,
-      lineHeight: conf.lineHeight,
-      bgColor: conf.bgColor,
-      textColor: conf.textColor,
-      fontFamily: conf.fontFamily,
-      fontPath: conf.fontPath,
-      fontWeight: conf.fontWeight,
-      textAlign: conf.textAlign,
-      keepSpaces: conf.keepSpaces,
-    },
-    canvas,
-  );
-  const ctx = canvas.getContext("2d");
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = conf.bgColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const textX = conf.margin;
-  let textY = conf.margin;
-  if (conf.customHeight && conf.verticalAlign === "center") {
-    textY =
-      (conf.customHeight - textData.height) / 2 +
-      Math.max(0, (conf.lineHeight - conf.fontSize) / 2);
-  }
-
-  ctx.putImageData(textData, textX, textY);
-
-  return canvas;
+  return canvas.toBuffer("image/png", { compressionLevel: 6 });
 };
 
-const generateImage = async (content, config) => {
-  const conf = { ...DEFAULTS, ...config };
-  const canvas = createInternalCanvas(content, conf);
-  const dataUrl = canvas.toDataURL();
-
-  if (conf.debug) {
-    const fileName =
-      conf.debugFilename ||
-      `${new Date().toISOString().replace(/["W.]/g, "")}.png`;
-    await fs.writeFile(fileName, canvas.toBuffer());
-  }
-
-  return dataUrl;
-};
-
-export default { generateImage };
+export default { generateHighScoresImage };

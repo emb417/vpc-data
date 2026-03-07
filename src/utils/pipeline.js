@@ -332,7 +332,32 @@ const getScoresByVpsId = (vpsId) => {
         _id: 0,
       },
     },
-    { $sort: { tableName: 1, authorName: 1 } },
+    {
+      $addFields: {
+        versionParts: {
+          $map: {
+            input: { $split: ["$versionNumber", "."] },
+            as: "p",
+            in: { $toInt: "$$p" },
+          },
+        },
+        scores: {
+          $sortArray: { input: "$scores", sortBy: { score: -1 } },
+        },
+      },
+    },
+    {
+      $sort: {
+        tableName: 1,
+        authorName: 1,
+        "versionParts.0": -1,
+        "versionParts.1": -1,
+        "versionParts.2": -1,
+      },
+    },
+    {
+      $unset: "versionParts",
+    },
   );
 
   return pipeline;

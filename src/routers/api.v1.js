@@ -10,20 +10,27 @@ router.get("/", (req, res) => {
 });
 
 router.post("/convert", async (req, res) => {
-  const textToConvert = req.body.text;
-  const imageOptions = {
-    maxWidth: 1400,
-    fontSize: 30,
-    fontFamily: "monospace",
-    fontPath: "../resources/ponde___.ttf",
-    lineHeight: 40,
-    margin: 60,
-    bgColor: "black",
-    textColor: "yellow",
-    keepSpaces: true,
-  };
-  const dataUri = await canvas.generateImage(textToConvert, imageOptions);
-  res.send(dataUri);
+  try {
+    const { vpsId, numRows = 20 } = req.body;
+    if (!vpsId) return res.status(400).json({ error: "vpsId is required" });
+
+    const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
+    const db = await getDb();
+    const results = await db.collection("tables").aggregate(pipeline).toArray();
+
+    if (!results.length)
+      return res
+        .status(404)
+        .json({ error: `No table found for vpsId: ${vpsId}` });
+
+    const tableData = results[0];
+    const buf = await canvas.generateHighScoresImage(tableData, numRows);
+    res.setHeader("Content-Type", "image/png");
+    res.end(buf);
+  } catch (err) {
+    console.error("generateHighScoresImage error:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
 });
 
 router.get("/tables", async (req, res) => {

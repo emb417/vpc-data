@@ -31,7 +31,15 @@ ENV TZ=America/Los_Angeles
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y libexpat1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libjpeg62-turbo \
+    libgif7 \
+    librsvg2-2 \
+    libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
 RUN addgroup --gid 1001 nodejs && adduser --uid 1001 --gid 1001 --disabled-password --gecos "" nodejs
