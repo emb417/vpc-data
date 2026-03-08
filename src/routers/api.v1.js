@@ -2,6 +2,7 @@ import express from "express";
 import canvas from "../utils/canvas.js";
 import { getDb } from "../utils/mongo.js";
 import pipelineHelper from "../utils/pipeline.js";
+import { getOrRefreshGamesData } from "../utils/vps/cache.js";
 
 const router = express.Router();
 
@@ -24,7 +25,32 @@ router.post("/convert", async (req, res) => {
         .json({ error: `No table found for vpsId: ${vpsId}` });
 
     const tableData = results[0];
-    const buf = await canvas.generateHighScoresImage(tableData, numRows);
+
+    // Fetch VPS data for images
+    let vpsEntry = null;
+    try {
+      const vpsData = await getOrRefreshGamesData();
+      const game = vpsData.find(
+        (g) => g.tableFiles && g.tableFiles.some((t) => t.id === vpsId),
+      );
+      if (game) {
+        const tableFile = game.tableFiles.find((t) => t.id === vpsId);
+        vpsEntry = {
+          tableImageUrl: tableFile?.imgUrl,
+          b2sImageUrl: game.b2sFiles?.[0]?.imgUrl,
+        };
+      }
+    } catch (vpsErr) {
+      console.error("Failed to fetch VPS data for images:", vpsErr.message);
+    }
+
+    console.log('vpsEntry before canvas:', JSON.stringify(vpsEntry, null, 2)); // Log vpsEntry
+
+    const buf = await canvas.generateHighScoresImage(
+      tableData,
+      numRows,
+      vpsEntry,
+    );
     res.setHeader("Content-Type", "image/png");
     res.end(buf);
   } catch (err) {
