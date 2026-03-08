@@ -228,6 +228,9 @@ const generateHighScoresImage = async (tableData, numRows = 20) => {
   ];
 
   const headerH = headerItems.length * HEADER_LINE_H + HEADER_PAD;
+  const MAX_TITLE_LINES = 3;
+  const staticHeaderH =
+    (MAX_TITLE_LINES + (authorsLine ? 1 : 0)) * HEADER_LINE_H + HEADER_PAD;
   const contentW = W - PAD_X * 2;
 
   // Column widths
@@ -241,7 +244,7 @@ const generateHighScoresImage = async (tableData, numRows = 20) => {
   const colName = colAvatar + colAvatarW;
   const colScore = colName + colNameW;
 
-  const totalH = PAD_TOP + headerH + topScores.length * ROW_H + PAD_BOT;
+  const totalH = PAD_TOP + staticHeaderH + numRows * ROW_H + PAD_BOT;
 
   // ── Canvas (2x for crisp rendering) ─────────────────────────────────────────
   const SCALE = 2;
@@ -258,7 +261,10 @@ const generateHighScoresImage = async (tableData, numRows = 20) => {
   drawRoundedRect(ctx, 1, 1, W - 2, totalH - 2, 10, null, THEME.border, 2);
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  let curY = PAD_TOP + HEADER_PAD;
+  const headerTextTotalH = headerItems.length * HEADER_LINE_H;
+  const headerStartY =
+    PAD_TOP + (staticHeaderH - headerTextTotalH) / 2 + HEADER_LINE_H * 0.75;
+  let curY = headerStartY;
 
   for (const item of headerItems) {
     ctx.font = item.font;
@@ -269,7 +275,7 @@ const generateHighScoresImage = async (tableData, numRows = 20) => {
     curY += HEADER_LINE_H;
   }
 
-  curY = PAD_TOP + headerH;
+  curY = PAD_TOP + staticHeaderH;
 
   // ── Rows ────────────────────────────────────────────────────────────────────
   const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
