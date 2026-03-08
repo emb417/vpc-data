@@ -19,32 +19,51 @@ router.post("/convert", async (req, res) => {
     const db = await getDb();
     const results = await db.collection("tables").aggregate(pipeline).toArray();
 
-    if (!results.length)
-      return res
-        .status(404)
-        .json({ error: `No table found for vpsId: ${vpsId}` });
-
-    const tableData = results[0];
-
-    // Fetch VPS data for images
+    // Fetch VPS data once — used for both stub and images
+    let game = null;
+    let tableFile = null;
     let vpsEntry = null;
     try {
       const vpsData = await getOrRefreshGamesData();
-      const game = vpsData.find(
-        (g) => g.tableFiles && g.tableFiles.some((t) => t.id === vpsId),
-      );
+      game =
+        vpsData.find(
+          (g) => g.tableFiles && g.tableFiles.some((t) => t.id === vpsId),
+        ) ?? null;
       if (game) {
-        const tableFile = game.tableFiles.find((t) => t.id === vpsId);
+        tableFile = game.tableFiles.find((t) => t.id === vpsId) ?? null;
         vpsEntry = {
           tableImageUrl: tableFile?.imgUrl,
           b2sImageUrl: game.b2sFiles?.[0]?.imgUrl,
         };
       }
     } catch (vpsErr) {
-      console.error("Failed to fetch VPS data for images:", vpsErr.message);
+      console.error("Failed to fetch VPS data:", vpsErr.message);
     }
 
-    console.log('vpsEntry before canvas:', JSON.stringify(vpsEntry, null, 2)); // Log vpsEntry
+    let tableData;
+
+    if (!results.length) {
+      // No table in DB — build a stub from VPS data
+      tableData = {
+        tableName: game?.name ?? vpsId,
+        authorName: tableFile?.authors?.join(", ") ?? "",
+        versionNumber: tableFile?.version ?? "",
+        vpsId,
+        scores: [],
+      };
+    } else {
+      tableData = results[0];
+    }
+
+    // If no scores, inject a placeholder entry
+    if (!tableData.scores?.length) {
+      tableData = {
+        ...tableData,
+        scores: [
+          { userName: "Be the first to post a score!", score: null, user: {} },
+        ],
+      };
+    }
 
     const buf = await canvas.generateHighScoresImage(
       tableData,
@@ -258,7 +277,6 @@ router.get("/iscored", async (req, res) => {
         .json({ error: "Upstream error", status: response.status });
     }
 
-    // iscored returns JSON, not text
     const json = await response.json();
 
     res.setHeader("Content-Type", "application/json");

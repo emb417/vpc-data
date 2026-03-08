@@ -329,6 +329,16 @@ const generateHighScoresImage = async (
         isEven ? THEME.bgRowEven : THEME.bgRowOdd,
       );
 
+      // Placeholder row — no score, just a centered message
+      if (entry.score === null) {
+        ctx.font = "normal 26px Poppins";
+        ctx.fillStyle = THEME.textMuted;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(entry.userName, startX + colInnerW / 2, midY);
+        return;
+      }
+
       const colRankW = 60;
       const colAvatarW = AVATAR_R * 2 + 20;
       const barStart = startX + colRankW + colAvatarW;
