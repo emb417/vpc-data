@@ -96,17 +96,14 @@ const drawAvatar = (ctx, x, y, r, image, initial) => {
   if (image) {
     ctx.drawImage(image, x - r, y - r, r * 2, r * 2);
   } else {
-    // Initials fallback
     ctx.fillStyle = THEME.borderSubtle;
     ctx.fill();
     ctx.restore();
-    // Border
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.strokeStyle = THEME.textMuted;
     ctx.lineWidth = 1;
     ctx.stroke();
-    // Initial letter
     ctx.fillStyle = THEME.textName;
     ctx.font = `bold 10px Poppins`;
     ctx.textAlign = "center";
@@ -116,7 +113,6 @@ const drawAvatar = (ctx, x, y, r, image, initial) => {
   }
 
   ctx.restore();
-  // Circular border on top of image
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.strokeStyle = THEME.borderSubtle;
@@ -124,43 +120,98 @@ const drawAvatar = (ctx, x, y, r, image, initial) => {
   ctx.stroke();
 };
 
-// ── generateHighScoresImage ───────────────────────────────────────────────────
-//
-// Accepts data already fetched from MongoDB (output of getScoresByVpsId).
-// The router is responsible for the DB lookup; this function just renders.
-//
-// tableData shape (first element from pipeline result):
-//   {
-//     tableName:     string,
-//     authorName:    string,   // comma-separated authors
-//     versionNumber: string,
-//     scores: [{ userName, score, user: { id, avatar } }]
-//   }
-//
-// avatarImages: Map<userName, Canvas.Image | null>  (pre-fetched by router)
+const fetchResizedImage = async (url, width, height) => {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    const pngBuffer = await sharp(Buffer.from(arrayBuffer))
+      .resize(width, height, { fit: "inside" })
+      .png()
+      .toBuffer();
+    return await Canvas.loadImage(pngBuffer);
+  } catch (err) {
+    console.error("fetchResizedImage failed:", url, err.message);
+    return null;
+  }
+};
 
-const generateHighScoresImage = async (tableData, numRows = 20) => {
+// Wrap text into lines that fit within maxWidth, up to maxLines
+const wrapText = (ctx, text, maxWidth, maxLines = 3) => {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? line + " " + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      if (lines.length >= maxLines) {
+        // Truncate last line with ellipsis
+        lines[maxLines - 1] = truncateText(
+          ctx,
+          lines[maxLines - 1] + " " + word,
+          maxWidth,
+        );
+        return lines;
+      }
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+};
+
+const generateHighScoresImage = async (
+  tableData,
+  numRows = 20,
+  vpsEntry = null,
+) => {
   registerHighScoresFonts();
 
-  const { tableName, authorName, versionNumber, scores } = tableData;
+  const { tableName, authorName, versionNumber, scores, vpsId } = tableData;
 
   // Take top N scores (pipeline already sorted score desc)
   const topScores = (scores ?? []).slice(0, numRows);
 
-  // Fetch all avatars in parallel — construct URL from user.id + user.avatar hash
-  const avatarImages = new Map();
-  await Promise.all(
-    topScores.map(async (s) => {
-      const { id, avatar } = s.user ?? {};
-      const url =
-        id && avatar
-          ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp?size=128`
-          : null;
-      avatarImages.set(s.userName, await fetchAvatar(url));
-    }),
-  );
+  // Layout constants
+  const W = 1920;
+  const H = 1080;
+  const COL_W = W / 3;
+  const PAD = 40;
+  const INNER_W = COL_W - PAD * 2;
 
-  // Truncate authors to fit on one line using pixel measurement
+  const AVATAR_R = 30;
+  const ROW_H = (H - PAD * 2) / 10;
+
+  // Fetch all avatars in parallel
+  const avatarImages = new Map();
+  const avatarPromises = topScores.map(async (s) => {
+    const { id, avatar } = s.user ?? {};
+    const url =
+      id && avatar
+        ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp?size=128`
+        : null;
+    avatarImages.set(s.userName, await fetchAvatar(url));
+  });
+
+  // Fetch VPS images in parallel — reduced b2s height to 250
+  const vpsImagesPromise = (async () => {
+    const [b2sImg, tableImg] = await Promise.all([
+      fetchResizedImage(vpsEntry?.b2sImageUrl, INNER_W, 200),
+      fetchResizedImage(vpsEntry?.tableImageUrl, INNER_W, 550),
+    ]);
+    return { b2sImg, tableImg };
+  })();
+
+  const [_, { b2sImg, tableImg }] = await Promise.all([
+    Promise.all(avatarPromises),
+    vpsImagesPromise,
+  ]);
+
+  // Truncate authors helper
   const truncateAuthors = (str, maxWidth, font) => {
     if (!str) return null;
     const tmpCtx = Canvas.createCanvas(10, 10).getContext("2d");
@@ -178,182 +229,186 @@ const generateHighScoresImage = async (tableData, numRows = 20) => {
     return result;
   };
 
-  // ── Layout ──────────────────────────────────────────────────────────────────
-  const W = 350;
-  const PAD_X = 12;
-  const PAD_TOP = 12;
-  const PAD_BOT = 14;
-  const AVATAR_R = 13;
-  const ROW_H = 46;
-  const HEADER_PAD = 20;
-  const HEADER_LINE_H = 20;
-  const TITLE_MAX_W = W - PAD_X * 4;
-
-  // Helper: wrap text into lines that fit within maxWidth
-  const wrapText = (text, font, maxWidth) => {
-    const tmpCtx = Canvas.createCanvas(10, 10).getContext("2d");
-    tmpCtx.font = font;
-    const words = text.split(" ");
-    const lines = [];
-    let line = "";
-    for (const word of words) {
-      const test = line ? line + " " + word : word;
-      if (tmpCtx.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
-      }
-    }
-    if (line) lines.push(line);
-    return lines;
-  };
-
-  // Header: title wraps if needed, authors on last line
-  const authorsFont = "normal 11px Poppins";
-  const authorsLine = truncateAuthors(authorName, W - PAD_X * 6, authorsFont);
-  const titleFont = "bold 18px Poppins";
-  const titleText = `${tableName}  v${versionNumber}`;
-  const titleLines = wrapText(titleText, titleFont, TITLE_MAX_W);
-
-  const headerItems = [
-    ...titleLines.map((line) => ({
-      text: line,
-      font: titleFont,
-      color: THEME.textTitle,
-    })),
-    ...(authorsLine
-      ? [{ text: authorsLine, font: authorsFont, color: THEME.textMuted }]
-      : []),
-  ];
-
-  const headerH = headerItems.length * HEADER_LINE_H + HEADER_PAD;
-  const MAX_TITLE_LINES = 3;
-  const staticHeaderH =
-    (MAX_TITLE_LINES + (authorsLine ? 1 : 0)) * HEADER_LINE_H + HEADER_PAD;
-  const contentW = W - PAD_X * 2;
-
-  // Column widths
-  const colRankW = 28;
-  const colAvatarW = AVATAR_R * 2 + 10; // avatar diameter + gap
-  const colScoreW = 100;
-  const colNameW = contentW - colRankW - colAvatarW - colScoreW;
-
-  const colRank = PAD_X;
-  const colAvatar = colRank + colRankW;
-  const colName = colAvatar + colAvatarW;
-  const colScore = colName + colNameW;
-
-  const totalH = PAD_TOP + staticHeaderH + numRows * ROW_H + PAD_BOT;
-
-  // ── Canvas (2x for crisp rendering) ─────────────────────────────────────────
-  const SCALE = 2;
-  const canvas = Canvas.createCanvas(W * SCALE, totalH * SCALE);
+  // ── Canvas ───────────────────────────────────────────────────────────────────
+  const SCALE = 1;
+  const canvas = Canvas.createCanvas(W * SCALE, H * SCALE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SCALE, SCALE);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
   ctx.fillStyle = THEME.bg;
-  ctx.fillRect(0, 0, W, totalH);
+  ctx.fillRect(0, 0, W, H);
 
   // Outer border
-  drawRoundedRect(ctx, 1, 1, W - 2, totalH - 2, 10, null, THEME.border, 2);
+  drawRoundedRect(ctx, 10, 10, W - 20, H - 20, 20, null, THEME.border, 4);
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-  const headerTextTotalH = headerItems.length * HEADER_LINE_H;
-  const headerStartY =
-    PAD_TOP + (staticHeaderH - headerTextTotalH) / 2 + HEADER_LINE_H * 0.75;
-  let curY = headerStartY;
+  // ── Column 1: Metadata then Images ──────────────────────────────────────────
+  let curY = PAD + 10;
+  const col1X = PAD;
 
-  for (const item of headerItems) {
-    ctx.font = item.font;
-    ctx.fillStyle = item.color;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(item.text, W / 2, curY);
-    curY += HEADER_LINE_H;
+  const col1CenterX = COL_W / 2;
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  // Table Name (wrapped, up to 3 lines)
+  ctx.font = "bold 42px Poppins";
+  ctx.fillStyle = THEME.textTitle;
+  const titleLines = wrapText(ctx, tableName, INNER_W, 3);
+  for (const line of titleLines) {
+    ctx.fillText(line, col1CenterX, curY);
+    curY += 52;
+  }
+  curY += 4;
+
+  // Version
+  ctx.font = "bold 28px Poppins";
+  ctx.fillStyle = THEME.orange;
+  ctx.fillText(`v${versionNumber}`, col1CenterX, curY);
+  curY += 40;
+
+  // Authors
+  const authorsFont = "normal 24px Poppins";
+  const authorsLine = truncateAuthors(authorName, INNER_W * 0.75, authorsFont);
+  if (authorsLine) {
+    ctx.font = authorsFont;
+    ctx.fillStyle = THEME.textName;
+    ctx.fillText(authorsLine, col1CenterX, curY);
+    curY += 35;
   }
 
-  curY = PAD_TOP + staticHeaderH;
+  // VPS ID
+  ctx.font = "normal 20px CourierPrime";
+  ctx.fillStyle = THEME.textMuted;
+  ctx.fillText(`VPS ID: ${vpsId}`, col1CenterX, curY);
+  curY += 40;
 
-  // ── Rows ────────────────────────────────────────────────────────────────────
-  const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
+  ctx.restore();
 
-  topScores.forEach((entry, i) => {
-    const rowY = curY + i * ROW_H;
-    const midY = rowY + ROW_H / 2;
-    const isEven = i % 2 === 0;
+  // B2S Image — 85% column width (wider than table), centered
+  if (b2sImg) {
+    const b2sW = INNER_W * 0.65;
+    const b2sH = (b2sImg.height * b2sW) / b2sImg.width;
+    ctx.drawImage(b2sImg, col1X + (INNER_W - b2sW) / 2, curY, b2sW, b2sH);
+    curY += b2sH + 20;
+  }
 
-    // Row background
-    drawRoundedRect(
-      ctx,
-      PAD_X,
-      rowY + 2,
-      contentW,
-      ROW_H - 3,
-      8,
-      isEven ? THEME.bgRowEven : THEME.bgRowOdd,
+  // Table Image — 65% column width (narrower than b2s), fills remaining space
+  if (tableImg) {
+    const tableW = INNER_W * 0.65;
+    const maxTableH = H - curY - PAD;
+    const ratio = Math.min(
+      tableW / tableImg.width,
+      maxTableH / tableImg.height,
     );
+    const imgW = tableImg.width * ratio;
+    const imgH = tableImg.height * ratio;
+    ctx.drawImage(tableImg, col1X + (INNER_W - imgW) / 2, curY, imgW, imgH);
+  }
 
-    // ── Rank ─────────────────────────────────────────────────────────────────
-    ctx.fillStyle = THEME.orange;
-    ctx.font = "bold 15px Poppins";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(i + 1 + ".", colRank + 4, midY);
+  // ── Columns 2 & 3: Scores ───────────────────────────────────────────────────
+  const drawScoreColumn = (startIndex, startX) => {
+    const columnScores = topScores.slice(startIndex, startIndex + 10);
+    const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
+    const colInnerW = COL_W - PAD - 20;
 
-    // ── Avatar ────────────────────────────────────────────────────────────────
-    const avatarImg = avatarImages.get(entry.userName) ?? null;
-    drawAvatar(
-      ctx,
-      colAvatar + AVATAR_R,
-      midY,
-      AVATAR_R,
-      avatarImg,
-      entry.userName?.[0],
-    );
+    columnScores.forEach((entry, i) => {
+      const rowY = PAD + i * ROW_H;
+      const midY = rowY + ROW_H / 2;
+      const isEven = (startIndex + i) % 2 === 0;
 
-    // ── Name + Score on same line ─────────────────────────────────────────────
-    const nameScoreY = midY - 6;
-    const barStart = colName + 4;
-    const barEnd = W - PAD_X - 8;
-    const barW = barEnd - barStart;
-
-    ctx.font = "normal 14px Poppins";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = THEME.textName;
-    ctx.fillText(
-      truncateText(ctx, entry.userName, barW - 115),
-      barStart,
-      nameScoreY,
-    );
-
-    ctx.font = "bold 15px CourierPrime";
-    ctx.fillStyle = THEME.orange;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.fillText(fmtScore(entry.score ?? 0), barEnd, nameScoreY);
-
-    // ── Progress bar (full width, extends under score) ────────────────────────
-    const filledW = Math.max(
-      Math.floor(barW * ((entry.score ?? 0) / maxScore)),
-      0,
-    );
-    drawRoundedRect(ctx, barStart, midY + 7, barW, 3, 1, THEME.bgRowEven);
-    if (filledW > 0) {
       drawRoundedRect(
         ctx,
-        barStart,
-        midY + 7,
-        filledW,
-        3,
-        1,
-        THEME.progressBar,
+        startX,
+        rowY + 5,
+        colInnerW,
+        ROW_H - 10,
+        12,
+        isEven ? THEME.bgRowEven : THEME.bgRowOdd,
       );
-    }
-  });
+
+      const colRankW = 60;
+      const colAvatarW = AVATAR_R * 2 + 20;
+      const barStart = startX + colRankW + colAvatarW;
+      const barW = colInnerW - colRankW - colAvatarW - 20;
+
+      // Rank
+      ctx.fillStyle = THEME.orange;
+      ctx.font = "bold 28px Poppins";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${startIndex + i + 1}.`, startX + 15, midY);
+
+      // Avatar
+      const avatarImg = avatarImages.get(entry.userName) ?? null;
+      drawAvatar(
+        ctx,
+        startX + colRankW + AVATAR_R,
+        midY,
+        AVATAR_R,
+        avatarImg,
+        entry.userName?.[0],
+      );
+
+      // Name
+      const nameScoreY = midY - 12;
+      ctx.font = "normal 24px Poppins";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = THEME.textName;
+      ctx.fillText(
+        truncateText(ctx, entry.userName, barW - 180),
+        barStart,
+        nameScoreY,
+      );
+
+      // Score
+      ctx.font = "bold 28px CourierPrime";
+      ctx.fillStyle = THEME.orange;
+      ctx.textAlign = "right";
+      ctx.fillText(fmtScore(entry.score ?? 0), barStart + barW, nameScoreY);
+
+      // Progress bar
+      const filledW = Math.max(
+        Math.floor(barW * ((entry.score ?? 0) / maxScore)),
+        0,
+      );
+      const barY = midY + 10;
+      const barH = 6;
+      drawRoundedRect(ctx, barStart, barY, barW, barH, 2, THEME.bgRowEven);
+      if (filledW > 0) {
+        drawRoundedRect(
+          ctx,
+          barStart,
+          barY,
+          filledW,
+          barH,
+          2,
+          THEME.progressBar,
+        );
+      }
+
+      // Posted Date
+      if (entry.posted) {
+        const date = new Date(entry.posted);
+        const formattedDate = date.toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+        });
+        ctx.font = "normal 16px Poppins";
+        ctx.fillStyle = THEME.textMuted;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+        ctx.fillText(formattedDate, barStart + barW, barY + barH + 2);
+      }
+    });
+  };
+
+  drawScoreColumn(0, COL_W + 10);
+  drawScoreColumn(10, COL_W * 2 + 10);
 
   return canvas.toBuffer("image/png", { compressionLevel: 6 });
 };
