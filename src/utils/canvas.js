@@ -29,12 +29,14 @@ const THEME = {
 const FONTS = {
   POPPINS_BOLD: "/app/resources/fonts/Poppins-Bold.ttf",
   POPPINS_REGULAR: "/app/resources/fonts/Poppins-Regular.ttf",
+  POPPINS_ITALIC: "/app/resources/fonts/Poppins-Italic.ttf",
   MONO_REGULAR: "/app/resources/fonts/CourierPrime-Regular.ttf",
 };
 
 const registerHighScoresFonts = () => {
   registerFontOnce(FONTS.POPPINS_BOLD, "Poppins", "bold");
   registerFontOnce(FONTS.POPPINS_REGULAR, "Poppins", "normal");
+  registerFontOnce(FONTS.POPPINS_ITALIC, "PoppinsItalic", "normal");
   registerFontOnce(FONTS.MONO_REGULAR, "CourierPrime", "normal");
 };
 
@@ -171,7 +173,15 @@ const generateHighScoresImage = async (
 ) => {
   registerHighScoresFonts();
 
-  const { tableName, authorName, versionNumber, scores, vpsId } = tableData;
+  const {
+    tableName,
+    authorName,
+    versionNumber,
+    manufacturer,
+    year,
+    scores,
+    vpsId,
+  } = tableData;
 
   // Take top N scores (pipeline already sorted score desc)
   const topScores = (scores ?? []).slice(0, numRows);
@@ -192,7 +202,9 @@ const generateHighScoresImage = async (
     const { id, avatar } = s.user ?? {};
     const url =
       id && avatar
-        ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp?size=128`
+        ? avatar.startsWith("http")
+          ? avatar
+          : `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp?size=128`
         : null;
     avatarImages.set(s.userName, await fetchAvatar(url));
   });
@@ -263,10 +275,29 @@ const generateHighScoresImage = async (
   }
   curY += 4;
 
-  // Version
-  ctx.font = "bold 28px Poppins";
+  // Manufacturer, Year, Version
+  const manufacturerText = [manufacturer, year].filter(Boolean).join(" ");
+  const versionText = `v${versionNumber}`;
+
+  ctx.font = "normal 28px PoppinsItalic";
+  const manuWidth = ctx.measureText(manufacturerText).width;
+
+  ctx.font = "normal 20px Poppins";
+  const versionWidth = ctx.measureText(versionText).width;
+
+  const totalWidth = manuWidth + 12 + versionWidth; // 12px gap
+  const startX = col1CenterX - totalWidth / 2;
+
+  ctx.font = "normal 28px PoppinsItalic";
+  ctx.fillStyle = THEME.textMuted;
+  ctx.textAlign = "left";
+  ctx.fillText(manufacturerText, startX, curY);
+
+  ctx.font = "normal 20px Poppins";
   ctx.fillStyle = THEME.orange;
-  ctx.fillText(`v${versionNumber}`, col1CenterX, curY);
+  ctx.fillText(versionText, startX + manuWidth + 12, curY + 8);
+
+  ctx.textAlign = "center";
   curY += 40;
 
   // Authors
@@ -423,4 +454,140 @@ const generateHighScoresImage = async (
   return canvas.toBuffer("image/png", { compressionLevel: 6 });
 };
 
-export default { generateHighScoresImage };
+const generateLeaderboardImage = async (
+  weekData,
+  layout = "discord",
+  vpsEntry = null,
+  vpsData = {},
+) => {
+  registerHighScoresFonts();
+
+  const { scores = [], vpsId, authorName, table, versionNumber } = weekData;
+
+  if (layout === "backglass") {
+    const tableData = {
+      tableName: vpsData.name ?? weekData.table,
+      authorName: weekData.authorName,
+      versionNumber: weekData.versionNumber,
+      manufacturer: vpsData.manufacturer,
+      year: vpsData.year,
+      vpsId: weekData.vpsId,
+      scores: weekData.scores.map((s) => ({
+        userName: s.username,
+        score: s.score,
+        posted: s.posted,
+        user: { id: s.userId, avatar: s.userAvatarUrl },
+      })),
+    };
+    return generateHighScoresImage(tableData, 20, vpsEntry);
+  }
+
+  // ── discord layout ────────────────────────────────────────────────────────
+  const topScores = scores.slice(0, 20);
+
+  const COL_W = 640;
+  const PAD = 24;
+  const ROW_H = 56;
+  const AVATAR_R = 18;
+  const INNER_W = COL_W - PAD * 2;
+  const rowCount = Math.max(topScores.length, 1);
+  const H = PAD + rowCount * ROW_H + PAD;
+
+  const avatarImages = new Map();
+  await Promise.all(
+    topScores.map(async (s) => {
+      avatarImages.set(s.username, await fetchAvatar(s.userAvatarUrl ?? null));
+    }),
+  );
+
+  const canvas = Canvas.createCanvas(COL_W, H);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  ctx.fillStyle = THEME.bg;
+  ctx.fillRect(0, 0, COL_W, H);
+  drawRoundedRect(ctx, 10, 10, COL_W - 20, H - 20, 20, null, THEME.border, 4);
+
+  const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
+  const padded = [...topScores];
+  while (padded.length < 20) padded.push({ score: null, username: "—" });
+
+  topScores.forEach((entry, i) => {
+    const rowY = PAD + i * ROW_H;
+    const midY = rowY + ROW_H / 2;
+    const isEven = i % 2 === 0;
+
+    drawRoundedRect(
+      ctx,
+      PAD,
+      rowY + 2,
+      INNER_W,
+      ROW_H - 4,
+      10,
+      isEven ? THEME.bgRowEven : THEME.bgRowOdd,
+    );
+
+    if (entry.score === null || entry.score === undefined) {
+      ctx.font = "normal 18px Poppins";
+      ctx.fillStyle = THEME.textMuted;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(entry.username ?? "—", PAD + INNER_W / 2, midY);
+      return;
+    }
+
+    const colRankW = 56;
+    const colAvatarW = AVATAR_R * 2 + 12;
+    const barStart = PAD + colRankW + colAvatarW;
+    const barW = INNER_W - colRankW - colAvatarW - 12;
+
+    // Rank
+    ctx.fillStyle = THEME.orange;
+    ctx.font = "bold 30px CourierPrime";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${i + 1}`, PAD + colRankW / 2, midY + 3);
+
+    // Avatar
+    const avatarImg = avatarImages.get(entry.username) ?? null;
+    drawAvatar(
+      ctx,
+      PAD + colRankW + AVATAR_R,
+      midY,
+      AVATAR_R,
+      avatarImg,
+      entry.username?.[0],
+    );
+
+    // Name
+    ctx.font = "normal 30px Poppins";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = THEME.textName;
+    ctx.fillText(
+      truncateText(ctx, entry.username ?? "—", barW - 140),
+      barStart,
+      midY - 6,
+    );
+
+    // Score
+    ctx.font = "bold 30px CourierPrime";
+    ctx.fillStyle = THEME.orange;
+    ctx.textAlign = "right";
+    ctx.fillText(fmtScore(entry.score), barStart + barW, midY);
+
+    // Progress bar
+    const filledW = Math.max(Math.floor(barW * (entry.score / maxScore)), 0);
+    const barY = midY + 16;
+    const barH = 4;
+    drawRoundedRect(ctx, barStart, barY, barW, barH, 2, THEME.bgRowEven);
+    if (filledW > 0) {
+      drawRoundedRect(ctx, barStart, barY, filledW, barH, 2, THEME.progressBar);
+    }
+  });
+
+  return canvas.toBuffer("image/png", { compressionLevel: 6 });
+};
+
+export default { generateHighScoresImage, generateLeaderboardImage };

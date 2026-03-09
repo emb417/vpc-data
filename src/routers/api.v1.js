@@ -10,74 +10,6 @@ router.get("/", (req, res) => {
   res.send("VPC API v1 Endpoint is available, try /api/v1/tables.");
 });
 
-router.post("/convert", async (req, res) => {
-  try {
-    const { vpsId, numRows = 20 } = req.body;
-    if (!vpsId) return res.status(400).json({ error: "vpsId is required" });
-
-    const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
-    const db = await getDb();
-    const results = await db.collection("tables").aggregate(pipeline).toArray();
-
-    // Fetch VPS data once — used for both stub and images
-    let game = null;
-    let tableFile = null;
-    let vpsEntry = null;
-    try {
-      const vpsData = await getOrRefreshGamesData();
-      game =
-        vpsData.find(
-          (g) => g.tableFiles && g.tableFiles.some((t) => t.id === vpsId),
-        ) ?? null;
-      if (game) {
-        tableFile = game.tableFiles.find((t) => t.id === vpsId) ?? null;
-        vpsEntry = {
-          tableImageUrl: tableFile?.imgUrl,
-          b2sImageUrl: game.b2sFiles?.[0]?.imgUrl,
-        };
-      }
-    } catch (vpsErr) {
-      console.error("Failed to fetch VPS data:", vpsErr.message);
-    }
-
-    let tableData;
-
-    if (!results.length) {
-      // No table in DB — build a stub from VPS data
-      tableData = {
-        tableName: game?.name ?? vpsId,
-        authorName: tableFile?.authors?.join(", ") ?? "",
-        versionNumber: tableFile?.version ?? "",
-        vpsId,
-        scores: [],
-      };
-    } else {
-      tableData = results[0];
-    }
-
-    // If no scores, inject a placeholder entry
-    if (!tableData.scores?.length) {
-      tableData = {
-        ...tableData,
-        scores: [
-          { userName: "Be the first to post a score!", score: null, user: {} },
-        ],
-      };
-    }
-
-    const buf = await canvas.generateHighScoresImage(
-      tableData,
-      numRows,
-      vpsEntry,
-    );
-    res.setHeader("Content-Type", "image/png");
-    res.end(buf);
-  } catch (err) {
-    console.error("generateHighScoresImage error:", err);
-    res.status(500).json({ error: err.message, stack: err.stack });
-  }
-});
-
 router.get("/tables", async (req, res) => {
   const db = await getDb();
   const tables = await db.collection("tables").find({}).toArray();
@@ -287,5 +219,136 @@ router.get("/iscored", async (req, res) => {
       .json({ error: "Proxy request failed", details: err.message });
   }
 });
+
+router.post("/generateWeeklyLeaderboard", async (req, res) => {
+  try {
+    const { channelName = "competition-corner", layout = "discord" } = req.body;
+
+    const db = await getDb();
+    const currentWeek = await db
+      .collection("weeks")
+      .findOne({ isArchived: false, channelName });
+
+    if (!currentWeek)
+      return res
+        .status(404)
+        .json({ error: "No active week found for channel" });
+
+    let vpsEntry = null;
+    let manufacturer = null;
+    let year = null;
+    let name = null;
+    if (layout === "backglass" && currentWeek.vpsId) {
+      try {
+        const vpsData = await getOrRefreshGamesData();
+        const game = vpsData.find((g) =>
+          g.tableFiles?.some((t) => t.id === currentWeek.vpsId),
+        );
+        const tableFile = game?.tableFiles?.find(
+          (t) => t.id === currentWeek.vpsId,
+        );
+        vpsEntry = {
+          tableImageUrl: tableFile?.imgUrl,
+          b2sImageUrl: game?.b2sFiles?.[0]?.imgUrl,
+        };
+        manufacturer = game?.manufacturer ?? null;
+        year = game?.year ?? null;
+        name = game?.name ?? null;
+      } catch (vpsErr) {
+        console.error("Failed to fetch VPS data:", vpsErr.message);
+      }
+    }
+
+    const buf = await canvas.generateLeaderboardImage(
+      currentWeek,
+      layout,
+      vpsEntry,
+      { manufacturer, year, name },
+    );
+
+    res.setHeader("Content-Type", "image/png");
+    res.end(buf);
+  } catch (err) {
+    console.error("generateLeaderboardImage error:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
+const handleGenerateHighScoresLeaderboard = async (req, res) => {
+  try {
+    const { vpsId, numRows = 20 } = req.body;
+    if (!vpsId) return res.status(400).json({ error: "vpsId is required" });
+
+    const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
+    const db = await getDb();
+    const results = await db.collection("tables").aggregate(pipeline).toArray();
+
+    let game = null;
+    let tableFile = null;
+    let vpsEntry = null;
+    try {
+      const vpsData = await getOrRefreshGamesData();
+      game =
+        vpsData.find(
+          (g) => g.tableFiles && g.tableFiles.some((t) => t.id === vpsId),
+        ) ?? null;
+      if (game) {
+        tableFile = game.tableFiles.find((t) => t.id === vpsId) ?? null;
+        vpsEntry = {
+          tableImageUrl: tableFile?.imgUrl,
+          b2sImageUrl: game.b2sFiles?.[0]?.imgUrl,
+        };
+      }
+    } catch (vpsErr) {
+      console.error("Failed to fetch VPS data:", vpsErr.message);
+    }
+
+    let tableData;
+    if (!results.length) {
+      tableData = {
+        tableName: game?.name ?? vpsId,
+        authorName: tableFile?.authors?.join(", ") ?? "",
+        versionNumber: tableFile?.version ?? "",
+        manufacturer: game?.manufacturer,
+        year: game?.year,
+        vpsId,
+        scores: [],
+      };
+    } else {
+      tableData = {
+        ...results[0],
+        tableName: game?.name ?? results[0].tableName,
+        manufacturer: game?.manufacturer,
+        year: game?.year,
+      };
+    }
+
+    if (!tableData.scores?.length) {
+      tableData = {
+        ...tableData,
+        scores: [
+          { userName: "Be the first to post a score!", score: null, user: {} },
+        ],
+      };
+    }
+
+    const buf = await canvas.generateHighScoresImage(
+      tableData,
+      numRows,
+      vpsEntry,
+    );
+    res.setHeader("Content-Type", "image/png");
+    res.end(buf);
+  } catch (err) {
+    console.error("generateHighScoresImage error:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+};
+
+router.post(
+  "/generateHighScoresLeaderboard",
+  handleGenerateHighScoresLeaderboard,
+);
+router.post("/convert", handleGenerateHighScoresLeaderboard);
 
 export default router;
