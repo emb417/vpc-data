@@ -169,10 +169,11 @@ const renderPortraitScores = async (
   scores,
   numRows = 20,
   drawHeader = null,
+  rankOffset = 0,
 ) => {
   registerHighScoresFonts();
 
-  const topScores = scores.slice(0, 20);
+  const topScores = scores.slice(0, numRows);
   const rowCount = numRows;
 
   const COL_W = 640;
@@ -253,7 +254,7 @@ const renderPortraitScores = async (
     ctx.letterSpacing = "-1px";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${i + 1}`, PAD + colRankW / 2, midY + 3);
+    ctx.fillText(`${rankOffset + i + 1}`, PAD + colRankW / 2, midY + 3);
     ctx.letterSpacing = "0px";
 
     // Avatar
@@ -659,6 +660,7 @@ const generateLeaderboardImage = async (
   vpsEntry = null,
   vpsData = {},
   numRows = 20,
+  allowMultiple = false,
 ) => {
   registerHighScoresFonts();
 
@@ -683,13 +685,27 @@ const generateLeaderboardImage = async (
   }
 
   // ── portrait layout — no header, embed owns metadata ─────────────────────
+  if (allowMultiple && scores.length > numRows) {
+    const imageBuffers = [];
+    for (let i = 0; i < scores.length; i += numRows) {
+      const chunk = scores.slice(i, i + numRows).map((s) => ({
+        username: s.username,
+        score: s.score,
+        userAvatarUrl: s.userAvatarUrl ?? null,
+      }));
+      const buf = await renderPortraitScores(chunk, numRows, null, i);
+      imageBuffers.push(buf);
+    }
+    return imageBuffers;
+  }
+
   const normalized = scores.slice(0, numRows).map((s) => ({
     username: s.username,
     score: s.score,
     userAvatarUrl: s.userAvatarUrl ?? null,
   }));
 
-  return renderPortraitScores(normalized, numRows, null);
+  return renderPortraitScores(normalized, numRows, null, 0);
 };
 
 export default { generateHighScoresImage, generateLeaderboardImage };

@@ -226,6 +226,7 @@ router.post("/generateWeeklyLeaderboard", async (req, res) => {
       channelName = "competition-corner",
       layout = "portrait",
       numRows = 20,
+      allowMultipleImages = false,
     } = req.body;
 
     const db = await getDb();
@@ -263,16 +264,24 @@ router.post("/generateWeeklyLeaderboard", async (req, res) => {
       }
     }
 
-    const buf = await canvas.generateLeaderboardImage(
+    const result = await canvas.generateLeaderboardImage(
       currentWeek,
       layout,
       vpsEntry,
       { manufacturer, year, name },
       numRows,
+      allowMultipleImages,
     );
 
+    if (Array.isArray(result)) {
+      const images = result.map(
+        (buf) => `data:image/png;base64,${buf.toString("base64")}`,
+      );
+      return res.json({ images });
+    }
+
     res.setHeader("Content-Type", "image/png");
-    res.end(buf);
+    res.end(result);
   } catch (err) {
     console.error("generateLeaderboardImage error:", err);
     res.status(500).json({ error: err.message, stack: err.stack });
