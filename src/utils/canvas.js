@@ -165,11 +165,15 @@ const wrapText = (ctx, text, maxWidth, maxLines = 3) => {
 // scores: array of { username, score, userAvatarUrl }
 // headerHeight: pixels to reserve above rows (0 for no header)
 // drawHeader: optional async fn(ctx, PAD, INNER_W) that draws above the rows
-const renderPortraitScores = async (scores, drawHeader = null) => {
+const renderPortraitScores = async (
+  scores,
+  numRows = 20,
+  drawHeader = null,
+) => {
   registerHighScoresFonts();
 
   const topScores = scores.slice(0, 20);
-  const rowCount = Math.max(topScores.length, 1);
+  const rowCount = numRows;
 
   const COL_W = 640;
   const PAD = 24;
@@ -211,7 +215,10 @@ const renderPortraitScores = async (scores, drawHeader = null) => {
 
   const maxScore = Math.max(...topScores.map((s) => s.score ?? 0), 1);
 
-  topScores.forEach((entry, i) => {
+  const padded = [...topScores];
+  while (padded.length < numRows) padded.push({ score: null, username: "—" });
+
+  padded.forEach((entry, i) => {
     const rowY = PAD + headerHeight + i * ROW_H;
     const midY = rowY + ROW_H / 2;
     const isEven = i % 2 === 0;
@@ -406,7 +413,7 @@ const generateHighScoresImage = async (
       return curY - PAD; // return header height
     };
 
-    return renderPortraitScores(normalized, drawHeader);
+    return renderPortraitScores(normalized, numRows, drawHeader);
   }
 
   // ── landscape layout ─────────────────────────────────────────────────────
@@ -651,6 +658,7 @@ const generateLeaderboardImage = async (
   layout = "portrait",
   vpsEntry = null,
   vpsData = {},
+  numRows = 20,
 ) => {
   registerHighScoresFonts();
 
@@ -675,13 +683,13 @@ const generateLeaderboardImage = async (
   }
 
   // ── portrait layout — no header, embed owns metadata ─────────────────────
-  const normalized = scores.slice(0, 20).map((s) => ({
+  const normalized = scores.slice(0, numRows).map((s) => ({
     username: s.username,
     score: s.score,
     userAvatarUrl: s.userAvatarUrl ?? null,
   }));
 
-  return renderPortraitScores(normalized, null);
+  return renderPortraitScores(normalized, numRows, null);
 };
 
 export default { generateHighScoresImage, generateLeaderboardImage };

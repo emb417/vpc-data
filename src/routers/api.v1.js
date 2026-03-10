@@ -222,8 +222,11 @@ router.get("/iscored", async (req, res) => {
 
 router.post("/generateWeeklyLeaderboard", async (req, res) => {
   try {
-    const { channelName = "competition-corner", layout = "portrait" } =
-      req.body;
+    const {
+      channelName = "competition-corner",
+      layout = "portrait",
+      numRows = 20,
+    } = req.body;
 
     const db = await getDb();
     const currentWeek = await db
@@ -265,6 +268,7 @@ router.post("/generateWeeklyLeaderboard", async (req, res) => {
       layout,
       vpsEntry,
       { manufacturer, year, name },
+      numRows,
     );
 
     res.setHeader("Content-Type", "image/png");

@@ -223,7 +223,7 @@ curl "https://virtualpinballchat.com/vpc/api/v1/iscored?roomId=1011"
 
 All image endpoints return a PNG binary. Layouts:
 
-- **`portrait`** — Single column, compact rows, optimized for mobile and Discord embeds (640px wide, height scales with score count)
+- **`portrait`** — Single column, compact rows, optimized for mobile and Discord embeds (640x1168 for 20 rows, 608px tall for 10 rows)
 - **`landscape`** — Three-column layout with table art, backglass image, and metadata (1920×1080)
 
 ---
@@ -235,9 +235,10 @@ Generates a leaderboard image for the current active competition week.
 | ------------- | -------------------- | ------------------------------------- |
 | `channelName` | `competition-corner` | Channel to fetch the active week from |
 | `layout`      | `portrait`           | `portrait` or `landscape`             |
+| `numRows`     | `20`                 | Number of scores to show              |
 
 ```bash
-# Portrait (default)
+# Portrait (default 20 rows)
 curl -X POST https://virtualpinballchat.com/vpc/api/v1/generateWeeklyLeaderboard \
   -H "Content-Type: application/json" \
   -d '{"layout": "portrait"}' \
