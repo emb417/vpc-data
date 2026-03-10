@@ -222,7 +222,8 @@ router.get("/iscored", async (req, res) => {
 
 router.post("/generateWeeklyLeaderboard", async (req, res) => {
   try {
-    const { channelName = "competition-corner", layout = "discord" } = req.body;
+    const { channelName = "competition-corner", layout = "portrait" } =
+      req.body;
 
     const db = await getDb();
     const currentWeek = await db
@@ -238,7 +239,7 @@ router.post("/generateWeeklyLeaderboard", async (req, res) => {
     let manufacturer = null;
     let year = null;
     let name = null;
-    if (layout === "backglass" && currentWeek.vpsId) {
+    if (layout === "landscape" && currentWeek.vpsId) {
       try {
         const vpsData = await getOrRefreshGamesData();
         const game = vpsData.find((g) =>
@@ -276,7 +277,7 @@ router.post("/generateWeeklyLeaderboard", async (req, res) => {
 
 const handleGenerateHighScoresLeaderboard = async (req, res) => {
   try {
-    const { vpsId, numRows = 20 } = req.body;
+    const { vpsId, numRows = 20, layout = "landscape" } = req.body;
     if (!vpsId) return res.status(400).json({ error: "vpsId is required" });
 
     const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
@@ -336,6 +337,7 @@ const handleGenerateHighScoresLeaderboard = async (req, res) => {
       tableData,
       numRows,
       vpsEntry,
+      layout,
     );
     res.setHeader("Content-Type", "image/png");
     res.end(buf);
