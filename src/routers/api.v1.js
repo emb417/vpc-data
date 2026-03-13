@@ -3,11 +3,24 @@ import canvas from "../utils/canvas.js";
 import { getDb } from "../utils/mongo.js";
 import pipelineHelper from "../utils/pipeline.js";
 import { getOrRefreshGamesData } from "../utils/vps/cache.js";
+import {
+  enrichItemsWithVpsData,
+  getVpsLookup,
+} from "../utils/vps/enrichment.js";
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
   res.send("VPC API v1 Endpoint is available, try /api/v1/tables.");
+});
+
+router.get("/vpsLookup", async (req, res) => {
+  try {
+    const vpsLookup = await getVpsLookup();
+    res.json(vpsLookup);
+  } catch (error) {
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 router.get("/tables", async (req, res) => {
@@ -77,8 +90,9 @@ router.get("/scoresByPlayer", async (req, res) => {
   const username = req.query.username;
   const pipeline = pipelineHelper.getScoresByPlayer(username);
   const db = await getDb();
-  const table = await db.collection("tables").aggregate(pipeline).toArray();
-  res.send(table);
+  const scores = await db.collection("tables").aggregate(pipeline).toArray();
+  const enriched = await enrichItemsWithVpsData(scores);
+  res.send(enriched);
 });
 
 router.get("/weeks", async (req, res) => {
@@ -119,6 +133,10 @@ router.get("/currentWeek", async (req, res) => {
   const week = await db
     .collection("weeks")
     .findOne({ isArchived: false, channelName });
+  if (week) {
+    const [enriched] = await enrichItemsWithVpsData([week]);
+    return res.send(enriched);
+  }
   res.send(week);
 });
 
@@ -139,7 +157,8 @@ router.get("/recentWeeks", async (req, res) => {
     .skip(offset)
     .limit(limit)
     .toArray();
-  res.send(weeks);
+  const enriched = await enrichItemsWithVpsData(weeks);
+  res.send(enriched);
 });
 
 router.get("/recentTablesByHighscores", async (req, res) => {
@@ -151,6 +170,9 @@ router.get("/recentTablesByHighscores", async (req, res) => {
   );
   const db = await getDb();
   const tables = await db.collection("tables").aggregate(pipeline).toArray();
+  if (tables.length > 0 && tables[0].results) {
+    tables[0].results = await enrichItemsWithVpsData(tables[0].results);
+  }
   res.send(tables);
 });
 
@@ -165,6 +187,9 @@ router.get("/competitionWeeks", async (req, res) => {
   );
   const db = await getDb();
   const weeks = await db.collection("weeks").aggregate(pipeline).toArray();
+  if (weeks.length > 0 && weeks[0].results) {
+    weeks[0].results = await enrichItemsWithVpsData(weeks[0].results);
+  }
   res.send(weeks);
 });
 
