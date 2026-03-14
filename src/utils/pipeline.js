@@ -338,11 +338,25 @@ const getScoresByVpsId = (vpsId) => {
           $map: {
             input: { $split: ["$versionNumber", "."] },
             as: "p",
-            in: { $toInt: "$$p" },
+            in: {
+              $convert: {
+                input: {
+                  $trim: {
+                    input: {
+                      $ltrim: {
+                        input: "$$p",
+                        chars:
+                          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ",
+                      },
+                    },
+                  },
+                },
+                to: "int",
+                onError: 0,
+                onNull: 0,
+              },
+            },
           },
-        },
-        scores: {
-          $sortArray: { input: "$scores", sortBy: { score: -1 } },
         },
       },
     },
