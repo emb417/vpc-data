@@ -322,6 +322,16 @@ const handleGenerateHighScoresLeaderboard = async (req, res) => {
     const db = await getDb();
     const results = await db.collection("tables").aggregate(pipeline).toArray();
 
+    // Pick highest version using segment-aware semver sort
+    const parseVersion = (versionNumber) =>
+      (versionNumber ?? "0").split(".").flatMap((p) => {
+        const clean = p.replace(/[^0-9]/g, "");
+        if (clean.length > 1 && clean.startsWith("0")) {
+          return clean.split("").map(Number);
+        }
+        return [parseInt(clean, 10) || 0];
+      });
+
     let game = null;
     let tableFile = null;
     let vpsEntry = null;
@@ -354,9 +364,20 @@ const handleGenerateHighScoresLeaderboard = async (req, res) => {
         scores: [],
       };
     } else {
+      const sortedResults = [...results].sort((a, b) => {
+        const aParts = parseVersion(a.versionNumber);
+        const bParts = parseVersion(b.versionNumber);
+        const len = Math.max(aParts.length, bParts.length);
+        for (let i = 0; i < len; i++) {
+          const diff = (bParts[i] ?? 0) - (aParts[i] ?? 0);
+          if (diff !== 0) return diff;
+        }
+        return 0;
+      });
+
       tableData = {
-        ...results[0],
-        tableName: game?.name ?? results[0].tableName,
+        ...sortedResults[0],
+        tableName: game?.name ?? sortedResults[0].tableName,
         manufacturer: game?.manufacturer,
         year: game?.year,
       };
