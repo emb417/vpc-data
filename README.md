@@ -287,3 +287,108 @@ curl -X POST https://virtualpinballchat.com/vpc/api/v1/convert \
   -d '{"vpsId": "YsQs-_ejWL"}' \
   --output highscores.png
 ```
+
+---
+
+## VPC Score Agent API
+
+Base URL: `https://virtualpinballchat.com/vpc/api/v2`
+
+Endpoints for receiving score events from vpc-score-agent running on player cabinets. Data is written to POC collections (`poc_events`, `poc_tables`, `poc_weeks`) and does not affect production data.
+
+---
+
+**POST /events**
+Accepts a raw score event from vpc-score-agent. Always logs to `poc_events`. On `game_end`, processes scores into `poc_tables` and `poc_weeks` if applicable.
+
+| Field           | Required | Description                                            |
+| --------------- | -------- | ------------------------------------------------------ |
+| `userId`        | yes      | Discord user ID                                        |
+| `username`      | yes      | Discord username                                       |
+| `event`         | yes      | Event type: `game_start`, `current_scores`, `game_end` |
+| `timestamp`     | yes      | ISO 8601 timestamp from the agent                      |
+| `vpsId`         | no       | VPS table ID (required for score processing)           |
+| `versionNumber` | no       | Table version number                                   |
+| `rom`           | no       | ROM name as reported by VPX                            |
+| `payload`       | no       | Event-specific data (see below)                        |
+
+`game_end` payload shape:
+
+```json
+{
+  "players": 1,
+  "scores": [{ "player": "emb417", "score": "47250000" }],
+  "game_duration": 342
+}
+```
+
+Multiplayer sessions (`players > 1`) are discarded. Sessions with no `vpsId` are logged but not scored.
+
+```bash
+curl -X POST https://virtualpinballchat.com/vpc/api/v2/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "718313274164117505",
+    "username": "emb417",
+    "vpsId": "40Ne76_8Jn",
+    "versionNumber": "1.0.0",
+    "rom": "lostspc",
+    "event": "game_end",
+    "timestamp": "2026-03-16T18:00:00.000Z",
+    "payload": {
+      "players": 1,
+      "scores": [{ "player": "emb417", "score": "47250000" }],
+      "game_duration": 342
+    }
+  }'
+```
+
+---
+
+**GET /active**
+Returns all active and recently finished sessions grouped by `vpsId`, with past scores from `poc_tables` merged into each table's leaderboard. Used by the live leaderboard page in vpc-next.
+
+Each table entry includes an `activeSessions` array indicating who is currently playing, and a `scores` array combining past scores with any live in-progress score. Live scores are flagged with `isLive: true`.
+
+Sessions with no event received within 30 minutes are automatically expired before the response is returned.
+
+```bash
+curl https://virtualpinballchat.com/vpc/api/v2/active
+```
+
+Response shape:
+
+```json
+{
+  "fetchedAt": "2026-03-16T18:00:00.000Z",
+  "tables": [
+    {
+      "vpsId": "40Ne76_8Jn",
+      "tableName": "Lost in Space (Sega 1998)",
+      "activeSessions": [
+        {
+          "username": "emb417",
+          "status": "playing",
+          "currentScore": "32000000",
+          "startedAt": "2026-03-16T17:55:00.000Z",
+          "lastEventAt": "2026-03-16T17:59:00.000Z"
+        }
+      ],
+      "scores": [
+        {
+          "username": "ed209",
+          "score": 47250000,
+          "isLive": false,
+          "source": "vpc-score-agent"
+        },
+        {
+          "username": "emb417",
+          "score": 32000000,
+          "isLive": true,
+          "source": "vpc-score-agent"
+        }
+      ]
+    }
+  ]
+}
+```

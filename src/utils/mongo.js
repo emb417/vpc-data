@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { logger } from "./logger.js";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 const DB_NAME = process.env.DB_NAME;
 const DB_USER = process.env.DB_USER;
@@ -51,6 +51,11 @@ export const getDb = () => {
   }
   return db;
 };
+
+/**
+ * Generate a new ObjectId.
+ */
+export const generateObjectId = () => new ObjectId();
 
 export const closeDb = async () => {
   if (client) {

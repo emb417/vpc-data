@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import apiRouter from "./routers/api.v1.js";
+import v2Router from "./routers/api.v2.js";
 import vpsApiRouter from "./routers/vps.v1.js";
 import { initDb, closeDb } from "./utils/mongo.js";
 import { httpLogger, logger } from "./utils/logger.js";
@@ -31,6 +32,7 @@ app.use(
 app.use(express.json());
 
 app.use("/api/v1", apiRouter);
+app.use("/api/v2", v2Router);
 app.use("/vps/api/v1", vpsApiRouter);
 
 app.get("/vps/api", (req, res) => {
