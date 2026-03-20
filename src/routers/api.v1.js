@@ -23,39 +23,6 @@ router.get("/vpsLookup", async (req, res) => {
   }
 });
 
-router.get("/tables", async (req, res) => {
-  const db = await getDb();
-  const tables = await db.collection("tables").find({}).toArray();
-  res.send(tables);
-});
-
-router.get("/tablesWithAuthorVersion", async (req, res) => {
-  const pipeline = pipelineHelper.getTablesWithAuthorVersion();
-  const db = await getDb();
-  const tables = await db.collection("tables").aggregate(pipeline).toArray();
-  res.send(tables);
-});
-
-router.get("/scoresByTable", async (req, res) => {
-  const tableName = req.query.tableName;
-  const pipeline = pipelineHelper.getScoresByTable(tableName);
-  const db = await getDb();
-  const table = await db.collection("tables").aggregate(pipeline).toArray();
-  res.send(table);
-});
-
-router.get("/scoresByTableAndAuthor", async (req, res) => {
-  const tableName = req.query.tableName;
-  const authorName = req.query.authorName;
-  const pipeline = pipelineHelper.getScoresByTableAndAuthor(
-    tableName,
-    authorName,
-  );
-  const db = await getDb();
-  const table = await db.collection("tables").aggregate(pipeline).toArray();
-  res.send(table);
-});
-
 router.get("/scoresByVpsId", async (req, res) => {
   const vpsId = req.query.vpsId;
   const pipeline = pipelineHelper.getScoresByVpsId(vpsId);
@@ -72,20 +39,6 @@ router.get("/scoresByTableAndAuthorUsingFuzzyTableSearch", async (req, res) => {
   res.send(table);
 });
 
-router.get("/scoresByTableAndAuthorAndVersion", async (req, res) => {
-  const tableName = req.query.tableName;
-  const authorName = req.query.authorName;
-  const versionNumber = req.query.versionNumber;
-  const pipeline = pipelineHelper.getScoresByTableAndAuthorAndVersion(
-    tableName,
-    authorName,
-    versionNumber,
-  );
-  const db = await getDb();
-  const table = await db.collection("tables").aggregate(pipeline).toArray();
-  res.send(table);
-});
-
 router.get("/scoresByPlayer", async (req, res) => {
   const username = req.query.username;
   const pipeline = pipelineHelper.getScoresByPlayer(username);
@@ -93,12 +46,6 @@ router.get("/scoresByPlayer", async (req, res) => {
   const scores = await db.collection("tables").aggregate(pipeline).toArray();
   const enriched = await enrichItemsWithVpsData(scores);
   res.send(enriched);
-});
-
-router.get("/weeks", async (req, res) => {
-  const db = await getDb();
-  const weeks = await db.collection("weeks").find({}).toArray();
-  res.send(weeks);
 });
 
 router.get("/weeksByChannelName", async (req, res) => {
