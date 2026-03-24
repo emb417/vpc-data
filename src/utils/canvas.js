@@ -41,6 +41,11 @@ const registerHighScoresFonts = () => {
 
 const fmtScore = (n) => n.toLocaleString("en-US");
 
+const formatUsername = (name) => {
+  const text = name ?? "—";
+  return text.length > 12 ? text.slice(0, 11) + "…" : text;
+};
+
 const drawRoundedRect = (ctx, x, y, w, h, r, fill, stroke, strokeWidth = 1) => {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -239,7 +244,7 @@ const renderPortraitScores = async (
       ctx.fillStyle = THEME.textMuted;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(entry.username ?? "—", PAD + INNER_W / 2, midY);
+      ctx.fillText(formatUsername(entry.username), PAD + INNER_W / 2, midY);
       return;
     }
 
@@ -274,7 +279,7 @@ const renderPortraitScores = async (
     ctx.textBaseline = "middle";
     ctx.fillStyle = THEME.textName;
     ctx.fillText(
-      truncateText(ctx, entry.username ?? "—", barW - 160),
+      truncateText(ctx, formatUsername(entry.username), barW - 160),
       barStart,
       midY - 2,
     );
@@ -572,7 +577,7 @@ const generateHighScoresImage = async (
         ctx.fillStyle = THEME.textMuted;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(entry.userName, startX + colInnerW / 2, midY);
+        ctx.fillText(formatUsername(entry.userName), startX + colInnerW / 2, midY);
         return;
       }
 
@@ -603,7 +608,7 @@ const generateHighScoresImage = async (
       ctx.textBaseline = "middle";
       ctx.fillStyle = THEME.textName;
       ctx.fillText(
-        truncateText(ctx, entry.userName, barW - 180),
+        truncateText(ctx, formatUsername(entry.userName), barW - 180),
         barStart,
         nameScoreY,
       );
