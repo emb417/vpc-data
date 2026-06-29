@@ -1,6 +1,6 @@
 import express from "express";
 import canvas from "../utils/canvas.js";
-import { getDb } from "../utils/mongo.js";
+import { getDb, toObjectId } from "../utils/mongo.js";
 import pipelineHelper from "../utils/pipeline.js";
 import { getOrRefreshGamesData } from "../utils/vps/cache.js";
 import {
@@ -156,6 +156,47 @@ router.get("/seasonWeeks", async (req, res) => {
     .sort({ weekNumber: -1 })
     .toArray();
   res.send(weeks);
+});
+
+router.get("/tournaments", async (req, res) => {
+  try {
+    const status = req.query.status;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
+    const searchTerm = req.query.searchTerm ?? "";
+
+    const filter = {};
+    if (req.query.id) {
+      const _id = toObjectId(req.query.id);
+      if (!_id) return res.send([{ totalCount: 0, results: [] }]);
+      filter._id = _id;
+    }
+    if (status) filter.status = status;
+    if (searchTerm)
+      filter.name = { $regex: `.*${searchTerm}.*`, $options: "i" };
+
+    const db = await getDb();
+    const collection = db.collection("tournaments");
+
+    const totalCount = await collection.countDocuments(filter);
+    const tournaments = await collection
+      .find(filter)
+      .sort({ _id: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+
+    const results = await Promise.all(
+      tournaments.map(async (tour) => {
+        const tables = await enrichItemsWithVpsData(tour.tables ?? []);
+        return { ...tour, _id: tour._id?.toString() ?? tour._id, tables };
+      }),
+    );
+
+    res.send([{ totalCount, results }]);
+  } catch (error) {
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 router.get("/iscored", async (req, res) => {

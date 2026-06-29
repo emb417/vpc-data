@@ -57,6 +57,17 @@ export const getDb = () => {
  */
 export const generateObjectId = () => new ObjectId();
 
+/**
+ * Parse a string into an ObjectId. Returns null if invalid.
+ */
+export const toObjectId = (id) => {
+  try {
+    return new ObjectId(id);
+  } catch {
+    return null;
+  }
+};
+
 export const closeDb = async () => {
   if (client) {
     await client.close();
@@ -70,4 +81,6 @@ export default {
   initDb,
   getDb,
   closeDb,
+  generateObjectId,
+  toObjectId,
 };
