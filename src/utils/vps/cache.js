@@ -158,7 +158,13 @@ async function initializeCache() {
     await fs.promises.mkdir(CACHE_DIR, { recursive: true });
     const diskData = await loadDiskCache(CACHE_FILE_PATH);
     if (diskData) {
-      inMemoryCache = { data: diskData, timestamp: Date.now() };
+      let timestamp = 0;
+      try {
+        timestamp = (await fs.promises.stat(CACHE_FILE_PATH)).mtimeMs;
+      } catch {
+        timestamp = 0;
+      }
+      inMemoryCache = { data: diskData, timestamp };
     } else {
       logger.info(
         "No valid disk cache found. Triggering initial background fetch.",
