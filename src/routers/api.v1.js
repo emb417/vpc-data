@@ -181,7 +181,7 @@ router.get("/tournaments", async (req, res) => {
     const totalCount = await collection.countDocuments(filter);
     const tournaments = await collection
       .find(filter)
-      .sort({ _id: -1 })
+      .sort({ endDate: -1, startDate: -1 })
       .skip(offset)
       .limit(limit)
       .toArray();
