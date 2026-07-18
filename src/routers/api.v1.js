@@ -233,6 +233,69 @@ router.get("/iscored", async (req, res) => {
   }
 });
 
+router.post("/generateTournamentLeaderboard", async (req, res) => {
+  try {
+    const {
+      tournamentId,
+      numRows = 20,
+      allowMultipleImages = false,
+    } = req.body;
+    if (!tournamentId)
+      return res.status(400).json({ error: "tournamentId is required" });
+
+    const db = await getDb();
+    const tournament = await db
+      .collection("tournaments")
+      .findOne({ _id: toObjectId(tournamentId) });
+
+    if (!tournament)
+      return res.status(404).json({ error: "Tournament not found" });
+
+    const playerMap = new Map();
+    (tournament.tables ?? []).forEach((table) => {
+      if (!table.scores) return;
+      table.scores.forEach((score) => {
+        const username = score.username.toLowerCase();
+        const existing = playerMap.get(username);
+        if (existing) {
+          existing.points += parseInt(score.points) || 0;
+          existing.score += parseInt(score.score) || 0;
+        } else {
+          playerMap.set(username, {
+            username: score.username,
+            score: parseInt(score.score) || 0,
+            points: parseInt(score.points) || 0,
+            userAvatarUrl: score.userAvatarUrl,
+          });
+        }
+      });
+    });
+
+    const standings = Array.from(playerMap.values()).sort(
+      (a, b) => b.points - a.points || b.score - a.score,
+    );
+
+    const result = await canvas.generateTournamentLeaderboardImage(
+      { standings },
+      numRows,
+      allowMultipleImages,
+    );
+
+    if (Array.isArray(result)) {
+      const images = result.map(
+        (buf) => `data:image/png;base64,${buf.toString("base64")}`,
+      );
+      return res.json({ images });
+    }
+
+    res.setHeader("Content-Type", "image/png");
+    res.end(result);
+  } catch (err) {
+    console.error("generateTournamentLeaderboardImage error:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 router.post("/generateWeeklyLeaderboard", async (req, res) => {
   try {
     const {

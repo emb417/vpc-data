@@ -577,7 +577,11 @@ const generateHighScoresImage = async (
         ctx.fillStyle = THEME.textMuted;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(formatUsername(entry.userName), startX + colInnerW / 2, midY);
+        ctx.fillText(
+          formatUsername(entry.userName),
+          startX + colInnerW / 2,
+          midY,
+        );
         return;
       }
 
@@ -713,4 +717,36 @@ const generateLeaderboardImage = async (
   return renderPortraitScores(normalized, numRows, null, 0);
 };
 
-export default { generateHighScoresImage, generateLeaderboardImage };
+const generateTournamentLeaderboardImage = async (
+  tournamentData,
+  numRows = 20,
+  allowMultiple = false,
+) => {
+  registerHighScoresFonts();
+
+  const { standings = [] } = tournamentData;
+
+  const normalized = standings.map((s) => ({
+    username: s.username,
+    score: s.points,
+    userAvatarUrl: s.userAvatarUrl ?? null,
+  }));
+
+  if (allowMultiple && normalized.length > numRows) {
+    const imageBuffers = [];
+    for (let i = 0; i < normalized.length; i += numRows) {
+      const chunk = normalized.slice(i, i + numRows);
+      const buf = await renderPortraitScores(chunk, numRows, null, i);
+      imageBuffers.push(buf);
+    }
+    return imageBuffers;
+  }
+
+  return renderPortraitScores(normalized.slice(0, numRows), numRows, null, 0);
+};
+
+export default {
+  generateHighScoresImage,
+  generateLeaderboardImage,
+  generateTournamentLeaderboardImage,
+};
