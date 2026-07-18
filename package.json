@@ -1,6 +1,6 @@
 {
   "name": "vpc-data",
-  "version": "2.12.3",
+  "version": "2.12.4",
   "description": "data api for virtual pinball chat competition corner",
   "main": "index.js",
   "scripts": {
