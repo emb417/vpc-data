@@ -1,8 +1,16 @@
 import { getOrRefreshGamesData } from "./cache.js";
 
+let memoizedLookup = null;
+let lastGamesData = null;
+
 export const getVpsLookup = async () => {
   const vpsData = await getOrRefreshGamesData();
-  return Object.fromEntries(
+  
+  if (memoizedLookup && vpsData === lastGamesData) {
+    return memoizedLookup;
+  }
+
+  memoizedLookup = Object.fromEntries(
     vpsData
       .flatMap((g) =>
         (g.tableFiles ?? []).map((t) => [
@@ -21,6 +29,9 @@ export const getVpsLookup = async () => {
       )
       .filter(([id]) => id),
   );
+  
+  lastGamesData = vpsData;
+  return memoizedLookup;
 };
 
 export const enrichItemsWithVpsData = async (items, vpsIdField = "vpsId") => {
