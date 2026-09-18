@@ -461,6 +461,7 @@ const getCompetitionWeeks = (limit, offset, searchTerm, week, channelName) => {
 
 const getScoresByPlayer = (username) => {
   const pipeline = [
+    { $match: { "authors.versions.scores.username": username } },
     { $unwind: "$authors" },
     {
       $unwind: {
