@@ -251,32 +251,68 @@ router.post("/generateTournamentLeaderboard", async (req, res) => {
     if (!tournament)
       return res.status(404).json({ error: "Tournament not found" });
 
-    const playerMap = new Map();
-    (tournament.tables ?? []).forEach((table) => {
-      if (!table.scores) return;
-      table.scores.forEach((score) => {
-        const username = score.username.toLowerCase();
-        const existing = playerMap.get(username);
-        if (existing) {
-          existing.points += parseInt(score.points) || 0;
-          existing.score += parseInt(score.score) || 0;
-        } else {
-          playerMap.set(username, {
-            username: score.username,
-            score: parseInt(score.score) || 0,
-            points: parseInt(score.points) || 0,
-            userAvatarUrl: score.userAvatarUrl,
-          });
-        }
-      });
-    });
+    const tables = tournament.tables ?? [];
+    const isSingleTable = tables.length === 1;
 
-    const standings = Array.from(playerMap.values()).sort(
-      (a, b) => b.points - a.points || b.score - a.score,
-    );
+    let standings = [];
+    if (isSingleTable) {
+      const table = tables[0];
+      if (table && Array.isArray(table.scores)) {
+        const playerMap = new Map();
+        for (const s of table.scores) {
+          const key = s.username?.toLowerCase();
+          if (!key) continue;
+
+          const score = Number(s.score) || 0;
+          const existing = playerMap.get(key);
+
+          if (!existing || score > existing.score) {
+            playerMap.set(key, {
+              username: s.username,
+              score,
+              points: Number(s.points) || 0,
+              userAvatarUrl: s.userAvatarUrl ?? null,
+              tablesPlayed: 1,
+            });
+          }
+        }
+        standings = Array.from(playerMap.values()).sort(
+          (a, b) => b.score - a.score,
+        );
+      }
+    } else {
+      const playerMap = new Map();
+      tables.forEach((table) => {
+        if (!table.scores) return;
+        table.scores.forEach((score) => {
+          const username = score.username.toLowerCase();
+          const existing = playerMap.get(username);
+          if (existing) {
+            existing.points += parseInt(score.points) || 0;
+            existing.score += parseInt(score.score) || 0;
+            existing.tablesPlayed = (existing.tablesPlayed || 1) + 1;
+            if (!existing.userAvatarUrl && score.userAvatarUrl) {
+              existing.userAvatarUrl = score.userAvatarUrl;
+            }
+          } else {
+            playerMap.set(username, {
+              username: score.username,
+              score: parseInt(score.score) || 0,
+              points: parseInt(score.points) || 0,
+              userAvatarUrl: score.userAvatarUrl,
+              tablesPlayed: 1,
+            });
+          }
+        });
+      });
+
+      standings = Array.from(playerMap.values()).sort(
+        (a, b) => b.points - a.points || b.score - a.score,
+      );
+    }
 
     const result = await canvas.generateTournamentLeaderboardImage(
-      { standings },
+      { standings, isSingleTable },
       numRows,
       allowMultipleImages,
     );
