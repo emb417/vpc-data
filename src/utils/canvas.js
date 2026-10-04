@@ -724,11 +724,11 @@ const generateTournamentLeaderboardImage = async (
 ) => {
   registerHighScoresFonts();
 
-  const { standings = [] } = tournamentData;
+  const { standings = [], isSingleTable = false } = tournamentData;
 
   const normalized = standings.map((s) => ({
     username: s.username,
-    score: s.points,
+    score: isSingleTable ? s.score : s.points,
     userAvatarUrl: s.userAvatarUrl ?? null,
   }));
 
