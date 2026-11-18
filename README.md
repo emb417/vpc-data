@@ -219,6 +219,50 @@ curl "https://virtualpinballchat.com/vpc/api/v1/iscored?roomId=1011"
 
 ---
 
+### Tournaments
+
+**GET /tournaments**
+Returns tournaments. Supports pagination, search, status filtering, and ID lookup (as used by `TournamentDetail.js`, `TournamentDashboard.js`, and `MainDashboard.js`).
+
+| Parameter    | Default | Description                   |
+| ------------ | ------- | ----------------------------- |
+| `limit`      | `10`    | Number of results to return   |
+| `offset`     | `0`     | Pagination offset             |
+| `searchTerm` |         | Filter by tournament name     |
+| `status`     |         | Filter by tournament status (`active`, `ended`) |
+| `id`         |         | Specific tournament ID        |
+
+```bash
+# Get a specific tournament by ID (used by TournamentDetail.js)
+curl "https://virtualpinballchat.com/vpc/api/v1/tournaments?id=65123456789abcdef0123456&limit=1"
+
+# Get active tournaments (used by MainDashboard.js)
+curl "https://virtualpinballchat.com/vpc/api/v1/tournaments?status=active"
+
+# Get paginated tournaments with search (used by TournamentDashboard.js)
+curl "https://virtualpinballchat.com/vpc/api/v1/tournaments?limit=10&offset=0&searchTerm=Spring"
+```
+
+---
+
+**POST /generateTournamentLeaderboard**
+Generates a leaderboard image for a specific tournament.
+
+| Parameter             | Default  | Description                                |
+| --------------------- | -------- | ------------------------------------------ |
+| `tournamentId`        | required | Tournament ID                              |
+| `numRows`             | `20`     | Number of scores to show                   |
+| `allowMultipleImages` | `false`  | Return array of base64 images if splitting |
+
+```bash
+curl -X POST https://virtualpinballchat.com/vpc/api/v1/generateTournamentLeaderboard \
+  -H "Content-Type: application/json" \
+  -d '{"tournamentId": "65123456789abcdef0123456"}' \
+  --output tournament_leaderboard.png
+```
+
+---
+
 ### Leaderboard Images
 
 All image endpoints return a PNG binary. Layouts:
